@@ -7,7 +7,7 @@ const sendBookingEmail = require("../utils/sendMail");
 exports.createBooking = async (req, res) => {
   try {
     const {
-      roomIds, // Bây giờ nhận vào là mảng ["M-01", "M-02"]
+      roomIds, // Mảng phòng ["A-01", "A-02"]
       startTime,
       endTime,
       name,
@@ -15,31 +15,26 @@ exports.createBooking = async (req, res) => {
       phone,
     } = req.body;
 
-    // Parse ngày
+    // 1. Parse ngày giờ
     const newStartTime = new Date(startTime);
     const newEndTime = new Date(endTime);
 
-    // ⭐️ LOGIC CHECK KẸT GIỜ (NÂNG CẤP) ⭐️
-    // Tìm xem có booking nào trong DB mà:
-    // 1. Có chứa ÍT NHẤT 1 phòng trong danh sách khách đang chọn ($in)
-    // 2. VÀ Thời gian bị trùng (Overlap)
+    // 2. CHECK KẸT GIỜ (Logic của sếp đang rất ngon)
     const conflictBooking = await Booking.findOne({
-      roomIds: { $in: roomIds }, // Check mảng này có đụng mảng kia không
+      roomIds: { $in: roomIds },
       $or: [{ startTime: { $lt: newEndTime }, endTime: { $gt: newStartTime } }],
     });
 
     if (conflictBooking) {
-      // Tìm ra cụ thể phòng nào bị kẹt để báo lỗi cho xịn
-      // (Logic đơn giản: Báo chung chung trước)
       return res.status(409).json({
         message:
-          "Opps! Một trong các phòng bạn chọn đã bị người khác nhanh tay đặt mất trong khung giờ này. Vui lòng chọn phòng khác hoặc giờ khác.",
+          "Opps! Một trong các phòng bạn chọn đã bị người khác đặt mất trong khung giờ này.",
       });
     }
 
-    // --- NGON! KHÔNG KẸT ---
+    // 3. TẠO BOOKING MỚI
     const newBooking = new Booking({
-      roomIds, // Lưu mảng
+      roomIds,
       startTime: newStartTime,
       endTime: newEndTime,
       name,
@@ -47,18 +42,30 @@ exports.createBooking = async (req, res) => {
       phone,
     });
 
+    // Lưu vào DB
     await newBooking.save();
-    // 2. GỌI HÀM GỬI MAIL (Chạy ngầm - Fire and Forget)
-    // Mình không dùng 'await' ở đây để khách nhận phản hồi ngay lập tức, mail cứ từ từ gửi sau
-    sendBookingEmail(email, newBooking).catch((err) =>
-      console.error("Lỗi gửi mail ngầm:", err)
-    );
-    // (Tại đây ông có thể gọi hàm gửi mail xác nhận luôn)
-    // const sendBookingEmail = require('../utils/sendMail');
-    // sendBookingEmail(email, newBooking).catch(console.error);
 
+    // ============================================================
+    // 4. GỬI MAIL (Fire and Forget)
+    // ============================================================
+    // Tạo data đẹp để gửi sang file sendMail
+    const mailData = {
+      name: name,
+      startTime: newStartTime,
+      endTime: newEndTime,
+      roomIds: roomIds,
+    };
+
+    // Gọi hàm gửi mail (Có catch lỗi để ko làm sập server nếu mail lỗi)
+    sendBookingEmail(email, mailData)
+      .then(() => console.log(`✅ Đã gửi lệnh mail tới: ${email}`))
+      .catch((err) => console.error("❌ Lỗi gửi mail ngầm:", err));
+
+    // ============================================================
+
+    // 5. Trả về kết quả ngay cho khách (không cần chờ mail)
     res.status(201).json({
-      message: 'Booking "chốt đơn" thành công! Kiểm tra email nhé.',
+      message: "Booking thành công! Vui lòng kiểm tra email xác nhận.",
       data: newBooking,
     });
   } catch (error) {
