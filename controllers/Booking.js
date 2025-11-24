@@ -74,28 +74,28 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// --- 2. LẤY BOOKING (ĐỂ VẼ TIMELINE) ---
+// --- 2. LẤY BOOKING (ĐÃ FIX LOGIC OVERLAP) ---
 exports.getBookings = async (req, res) => {
   try {
     const filter = {};
     const { roomId, date } = req.query;
 
-    // Logic tìm kiếm:
-    // Nếu client hỏi lịch của phòng "M-01"
-    // Ta phải tìm các Booking mà trong mảng roomIds CÓ CHỨA "M-01"
     if (roomId) {
-      filter.roomIds = roomId; // Mongoose tự hiểu là "tìm mảng có chứa phần tử này"
+      filter.roomIds = roomId;
     }
 
     if (date) {
-      const startDate = new Date(date);
-      const endDate = new Date(date);
-      endDate.setDate(endDate.getDate() + 1);
+      // Ví dụ date = "2025-11-25"
+      const targetDayStart = new Date(date); // 00:00:00 ngày 25
+      const targetDayEnd = new Date(date);
+      targetDayEnd.setDate(targetDayEnd.getDate() + 1); // 00:00:00 ngày 26
 
-      filter.startTime = {
-        $gte: startDate,
-        $lt: endDate,
-      };
+      // ⭐️ LOGIC MỚI: TÌM GIAO NHAU (OVERLAP) ⭐️
+      // Một booking được coi là bận trong ngày 25 nếu:
+      // 1. Nó bắt đầu TRƯỚC khi ngày 25 kết thúc
+      // 2. VÀ Nó kết thúc SAU khi ngày 25 bắt đầu
+      filter.startTime = { $lt: targetDayEnd };
+      filter.endTime = { $gt: targetDayStart };
     }
 
     const bookings = await Booking.find(filter).sort({ startTime: 1 });
