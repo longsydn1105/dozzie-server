@@ -24,6 +24,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "Server đang chạy ngon lành cành đào!" });
+});
 // --- Khởi động Server & DB ---
 mongoose
   .connect(process.env.MONGODB_URI)
