@@ -3,14 +3,32 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 
 const sendBookingEmail = async (toEmail, bookingData) => {
+  // 0. Kiểm tra biến môi trường trước cho chắc
+  if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) {
+    console.error(
+      "❌ LỖI: Chưa cấu hình MAIL_USER hoặc MAIL_PASSWORD trong file .env"
+    );
+    return false;
+  }
+
   try {
-    // 1. Tạo "Shipper" (Transporter)
+    // 1. Tạo "Shipper" (Transporter) - CẤU HÌNH MẠNH TAY
     const transporter = nodemailer.createTransport({
       service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465, // Dùng cổng 465 (SSL) chuẩn bảo mật
+      secure: true,
       auth: {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASSWORD,
       },
+      // 👇 QUAN TRỌNG: Giúp vượt qua lỗi chặn SSL/TLS hoặc mạng công ty/cafe
+      tls: {
+        rejectUnauthorized: false,
+      },
+      // Bật log chi tiết để nếu lỗi thì biết ngay tại sao
+      logger: true,
+      debug: true,
     });
 
     // 2. Format dữ liệu cho đẹp
@@ -20,8 +38,10 @@ const sendBookingEmail = async (toEmail, bookingData) => {
     const endTime = new Date(bookingData.endTime).toLocaleString("vi-VN", {
       timeZone: "Asia/Ho_Chi_Minh",
     });
-    // Xử lý danh sách phòng (Mảng)
-    const roomList = bookingData.roomIds.join(", ");
+    // Xử lý danh sách phòng (Check mảng cho an toàn)
+    const roomList = Array.isArray(bookingData.roomIds)
+      ? bookingData.roomIds.join(", ")
+      : bookingData.roomId || "Không xác định";
 
     // 3. Thiết kế nội dung Email (HTML + CSS inline)
     const htmlContent = `
