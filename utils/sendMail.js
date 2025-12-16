@@ -22,10 +22,12 @@ const sendBookingEmail = async (toEmail, bookingData) => {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASSWORD,
       },
-      // 👇 QUAN TRỌNG: Giúp vượt qua lỗi chặn SSL/TLS hoặc mạng công ty/cafe
       tls: {
         rejectUnauthorized: false,
       },
+      connectionTimeout: 10000, // 10 giây không được thì báo lỗi luôn
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
       // Bật log chi tiết để nếu lỗi thì biết ngay tại sao
       logger: true,
       debug: true,
