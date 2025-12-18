@@ -14,22 +14,26 @@ const sendBookingEmail = async (toEmail, bookingData) => {
   try {
     // 1. Tạo "Shipper" (Transporter) - CẤU HÌNH CHUẨN RENDER
     const transporter = nodemailer.createTransport({
-      service: "gmail",
       host: "smtp.gmail.com",
-      port: 587, // 👉 Đổi sang 587 (TLS) cho ổn định
-      secure: false, // 👉 false đi kèm với cổng 587
+      port: 465, // 👉 Dùng cổng 465 (SSL/SMTPS) thay vì 587
+      secure: true, // 👉 true đi cặp với cổng 465
       auth: {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASSWORD,
       },
       tls: {
+        // Không check chứng chỉ SSL (Giúp kết nối nhanh hơn trên Server ảo)
         rejectUnauthorized: false,
       },
-      // 👇 QUAN TRỌNG NHẤT: Ép dùng IPv4 để tránh bị Gmail chặn trên Render
+      // 👇 VẪN GIỮ CÁI NÀY (Bùa hộ mệnh IPv4)
       family: 4,
 
-      // Tắt log chi tiết để đỡ rối mắt (lúc nào lỗi hẵng bật lại)
-      logger: false,
+      // Tăng thời gian chờ lên 30 giây (mặc định có 10s hơi ít)
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 30000,
+
+      logger: false, // Tắt log cho gọn
       debug: false,
     });
 
