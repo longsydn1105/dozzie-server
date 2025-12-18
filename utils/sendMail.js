@@ -14,8 +14,8 @@ const sendBookingEmail = async (toEmail, bookingData) => {
   try {
     // 1. Tạo "Shipper" (Transporter) - CẤU HÌNH CHUẨN RENDER
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465, // 👉 Dùng cổng 465 (SSL/SMTPS) thay vì 587
+      host: "smtp-relay.brevo.com",
+      port: 587, // 👉 Dùng cổng 465 (SSL/SMTPS) thay vì 587
       secure: true, // 👉 true đi cặp với cổng 465
       auth: {
         user: process.env.MAIL_USER,
