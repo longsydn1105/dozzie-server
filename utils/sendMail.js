@@ -3,21 +3,21 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 
 const sendBookingEmail = async (toEmail, bookingData) => {
-  // 0. Kiểm tra biến môi trường trước cho chắc
+  // 0. Kiểm tra biến môi trường
   if (!process.env.MAIL_USER || !process.env.MAIL_PASSWORD) {
     console.error(
-      "❌ LỖI: Chưa cấu hình MAIL_USER hoặc MAIL_PASSWORD trong file .env"
+      "❌ LỖI: Thiếu biến môi trường Mail (MAIL_USER / MAIL_PASSWORD)"
     );
     return false;
   }
 
   try {
-    // 1. Tạo "Shipper" (Transporter) - CẤU HÌNH MẠNH TAY
+    // 1. Tạo "Shipper" (Transporter) - CẤU HÌNH CHUẨN RENDER
     const transporter = nodemailer.createTransport({
       service: "gmail",
       host: "smtp.gmail.com",
-      port: 465, // Dùng cổng 465 (SSL) chuẩn bảo mật
-      secure: true,
+      port: 587, // 👉 Đổi sang 587 (TLS) cho ổn định
+      secure: false, // 👉 false đi kèm với cổng 587
       auth: {
         user: process.env.MAIL_USER,
         pass: process.env.MAIL_PASSWORD,
@@ -25,27 +25,29 @@ const sendBookingEmail = async (toEmail, bookingData) => {
       tls: {
         rejectUnauthorized: false,
       },
-      connectionTimeout: 10000, // 10 giây không được thì báo lỗi luôn
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-      // Bật log chi tiết để nếu lỗi thì biết ngay tại sao
-      logger: true,
-      debug: true,
+      // 👇 QUAN TRỌNG NHẤT: Ép dùng IPv4 để tránh bị Gmail chặn trên Render
+      family: 4,
+
+      // Tắt log chi tiết để đỡ rối mắt (lúc nào lỗi hẵng bật lại)
+      logger: false,
+      debug: false,
     });
 
-    // 2. Format dữ liệu cho đẹp
+    // 2. Format dữ liệu
     const startTime = new Date(bookingData.startTime).toLocaleString("vi-VN", {
       timeZone: "Asia/Ho_Chi_Minh",
     });
     const endTime = new Date(bookingData.endTime).toLocaleString("vi-VN", {
       timeZone: "Asia/Ho_Chi_Minh",
     });
-    // Xử lý danh sách phòng (Check mảng cho an toàn)
     const roomList = Array.isArray(bookingData.roomIds)
       ? bookingData.roomIds.join(", ")
-      : bookingData.roomId || "Không xác định";
+      : bookingData.roomId || "Phòng M-01";
 
-    // 3. Thiết kế nội dung Email (HTML + CSS inline)
+    // 👉 Thay link này bằng link Web Vercel của ông (hoặc để biến môi trường)
+    const HOME_URL = "https://dozzie-client.vercel.app";
+
+    // 3. Nội dung HTML
     const htmlContent = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden;">
                 <div style="background-color: #229ebd; padding: 30px; text-align: center; color: white;">
@@ -83,7 +85,7 @@ const sendBookingEmail = async (toEmail, bookingData) => {
                     </p>
                     
                     <div style="text-align: center; margin-top: 30px;">
-                        <a href="http://localhost:5173" style="display: inline-block; background-color: #229ebd; color: white; padding: 12px 25px; text-decoration: none; border-radius: 50px; font-weight: bold;">Về trang chủ</a>
+                        <a href="${HOME_URL}" style="display: inline-block; background-color: #229ebd; color: white; padding: 12px 25px; text-decoration: none; border-radius: 50px; font-weight: bold;">Về trang chủ</a>
                     </div>
                 </div>
 
@@ -94,19 +96,19 @@ const sendBookingEmail = async (toEmail, bookingData) => {
             </div>
         `;
 
-    // 4. Gửi thôi!
+    // 4. Gửi mail
     const info = await transporter.sendMail({
-      from: '"Dozzie Hotel 🏨" <no-reply@dozzie.com>', // Tên người gửi cho oách
-      to: toEmail, // Email khách
-      subject: `[Dozzie] Xác nhận đặt phòng thành công`, // Tiêu đề
-      html: htmlContent, // Nội dung
+      from: '"Dozzie Hotel 🏨" <no-reply@dozzie.com>',
+      to: toEmail,
+      subject: `[Dozzie] Xác nhận đặt phòng thành công`,
+      html: htmlContent,
     });
 
-    console.log("📧 Email sent: " + info.messageId);
+    console.log("📧 Email sent successfully: " + info.messageId);
     return true;
   } catch (error) {
     console.error("❌ Gửi mail thất bại:", error);
-    return false; // Không để lỗi mail làm crash server
+    return false;
   }
 };
 
