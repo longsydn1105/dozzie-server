@@ -4,7 +4,6 @@ const { Schema } = mongoose;
 
 const blogSchema = new Schema({
     title: { type: String, required: true, trim: true },
-    // "cach-ngu-ngon"
     slug: { 
         type: String, 
         required: true, 
