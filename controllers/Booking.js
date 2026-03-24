@@ -1,111 +1,95 @@
-// server/controllers/Booking.js
 const Booking = require("../models/Booking");
 const Room = require("../models/Room");
-const sendBookingEmail = require("../utils/sendMail");
+const { v4: uuidv4 } = require("uuid"); // npm install uuid để tạo Key mở cửa
+const ServicePackages = require("../models/ServicePackages");
 
-// --- 1. TẠO BOOKING (NHIỀU PHÒNG 1 LÚC) ---
+// --- 1. TẠO BOOKING MỚI ---
 exports.createBooking = async (req, res) => {
   try {
     const {
-      roomIds, // Mảng phòng ["A-01", "A-02"]
-      startTime,
-      endTime,
-      name,
-      email,
-      phone,
+      roomId, // "M-01"
+      packageId, // ID của gói 3h, 6h...
+      startTime, // ISO String từ Client gửi lên
     } = req.body;
 
-    // 1. Parse ngày giờ
-    const newStartTime = new Date(startTime);
-    const newEndTime = new Date(endTime);
+    // Lấy userId từ Middleware Auth (Sau khi ông đã đăng nhập)
+    const userId = req.user.id;
 
-    // 2. CHECK KẸT GIỜ (Logic của sếp đang rất ngon)
-    const conflictBooking = await Booking.findOne({
-      roomIds: { $in: roomIds },
-      $or: [{ startTime: { $lt: newEndTime }, endTime: { $gt: newStartTime } }],
+    // 1. Kiểm tra gói dịch vụ để tính giá và thời gian kết thúc
+    const ServicePackages = await ServicePackages.findById(packageId);
+    if (!ServicePackages) {
+      return res.status(404).json({ success: false, message: "Gói dịch vụ không tồn tại." });
+    }
+
+    const start = new Date(startTime);
+    const end = new Date(start.getTime() + ServicePackages.hours * 60 * 60 * 1000);
+
+    // 2. CHECK TRÙNG LỊCH (Overlap Logic)
+    const isRoomBusy = await Booking.findOne({
+      roomId: roomId,
+      status: { $ne: "cancelled" }, // Không tính các đơn đã hủy
+      $or: [{ startTime: { $lt: end }, endTime: { $gt: start } }],
     });
 
-    if (conflictBooking) {
+    if (isRoomBusy) {
       return res.status(409).json({
-        message:
-          "Opps! Một trong các phòng bạn chọn đã bị người khác đặt mất trong khung giờ này.",
+        success: false,
+        message: "Phòng này đã có người đặt trong khung giờ bạn chọn.",
       });
     }
 
-    // 3. TẠO BOOKING MỚI
+    // 3. TẠO MÃ KHÓA KỸ THUẬT SỐ (Digital Key)
+    // Thực tế sẽ là một chuỗi Hash, ở đây ta tạo chuỗi ngẫu nhiên 6 số cho dễ demo
+    const digitalKey = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 4. LƯU BOOKING
     const newBooking = new Booking({
-      roomIds,
-      startTime: newStartTime,
-      endTime: newEndTime,
-      name,
-      email,
-      phone,
+      userId,
+      roomId,
+      packageId,
+      startTime: start,
+      endTime: end,
+      totalPrice: ServicePackages.price,
+      digitalKey, // Đây là cái khách sẽ dùng để mở cửa qua MQTT
+      status: "pending",
     });
 
-    // Lưu vào DB
     await newBooking.save();
 
-    // ============================================================
-    // 4. GỬI MAIL (Fire and Forget)
-    // ============================================================
-    // Tạo data đẹp để gửi sang file sendMail
-    const mailData = {
-      name: name,
-      startTime: newStartTime,
-      endTime: newEndTime,
-      roomIds: roomIds,
-    };
+    // 5. CẬP NHẬT TRẠNG THÁI PHÒNG (Optional - tùy logic của ông)
+    // Thường thì khi khách Check-in mới đổi sang 'occupied'
 
-    // Gọi hàm gửi mail (Có catch lỗi để ko làm sập server nếu mail lỗi)
-    sendBookingEmail(email, mailData)
-      .then(() => console.log(`✅ Đã gửi lệnh mail tới: ${email}`))
-      .catch((err) => console.error("❌ Lỗi gửi mail ngầm:", err));
-
-    // ============================================================
-
-    // 5. Trả về kết quả ngay cho khách (không cần chờ mail)
     res.status(201).json({
-      message: "Booking thành công! Vui lòng kiểm tra email xác nhận.",
+      success: true,
+      message: "Đặt phòng thành công! Mã mở cửa sẽ khả dụng khi đến giờ nhận phòng.",
       data: newBooking,
     });
   } catch (error) {
     console.error("Lỗi createBooking:", error);
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi đặt phòng." });
   }
 };
 
-// --- 2. LẤY BOOKING (ĐÃ FIX LOGIC OVERLAP) ---
+// --- 2. LẤY DANH SÁCH BOOKING (Dành cho Admin hoặc Lịch sử khách) ---
 exports.getBookings = async (req, res) => {
   try {
+    const { roomId, userId, status } = req.query;
     const filter = {};
-    const { roomId, date } = req.query;
 
-    if (roomId) {
-      filter.roomIds = roomId;
-    }
+    if (roomId) filter.roomId = roomId;
+    if (userId) filter.userId = userId;
+    if (status) filter.status = status;
 
-    if (date) {
-      // Ví dụ date = "2025-11-25"
-      const targetDayStart = new Date(date); // 00:00:00 ngày 25
-      const targetDayEnd = new Date(date);
-      targetDayEnd.setDate(targetDayEnd.getDate() + 1); // 00:00:00 ngày 26
-
-      // ⭐️ LOGIC MỚI: TÌM GIAO NHAU (OVERLAP) ⭐️
-      // Một booking được coi là bận trong ngày 25 nếu:
-      // 1. Nó bắt đầu TRƯỚC khi ngày 25 kết thúc
-      // 2. VÀ Nó kết thúc SAU khi ngày 25 bắt đầu
-      filter.startTime = { $lt: targetDayEnd };
-      filter.endTime = { $gt: targetDayStart };
-    }
-
-    const bookings = await Booking.find(filter).sort({ startTime: 1 });
+    const bookings = await Booking.find(filter)
+      .populate("userId", "fullName email") // Lấy thêm tên khách
+      .populate("packageId", "name hours") // Lấy thêm tên gói
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
-      message: "Lấy data thành công",
+      success: true,
       data: bookings,
     });
   } catch (error) {
-    console.error("Lỗi getBookings:", error);
-    res.status(500).json({ message: "Lỗi server" });
+    res.status(500).json({ success: false, message: "Không thể lấy danh sách đặt phòng." });
   }
 };

@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const sosAlertSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    roomId: { type: Schema.Types.ObjectId, ref: "Room", required: true },
+    roomId: { type: String, ref: "Room", required: true },
 
     status: { type: String, enum: ["pending", "resolved"], default: "pending" },
     message: { type: String, required: true }, // Reason for SOS

@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const bookingSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    roomId: { type: Schema.Types.ObjectId, ref: "Room", required: true },
+    roomId: { type: String, ref: "Room", required: true },
     packageId: { type: Schema.Types.ObjectId, ref: "ServicePackage", required: true },
 
     status: {

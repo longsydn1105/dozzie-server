@@ -1,0 +1,54 @@
+@baseUrl = http://localhost:3000/api
+@adminToken = DÁN_TOKEN_ADMIN_VÀO_ĐÂY
+
+### 1. Thêm phòng M-01 (Khu Nam - Tầng 1)
+POST {{baseUrl}}/rooms
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "_id": "M-01",
+    "label": "Kén đơn Nam 01",
+    "gender": "Nam",
+    "floor": 1,
+    "iotConfig": {
+        "deviceId": "ESP32_M01",
+        "topicDoor": "hotel/room/M01/door",
+        "topicPower": "hotel/room/M01/power"
+    }
+}
+
+### -----------------------------------------------------------
+
+### 2. Thêm phòng F-01 (Khu Nữ - Tầng 2)
+POST {{baseUrl}}/rooms
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "_id": "F-01",
+    "label": "Kén đơn Nữ 01",
+    "gender": "Nữ",
+    "floor": 2,
+    "iotConfig": {
+        "deviceId": "ESP32_F01",
+        "topicDoor": "hotel/room/F01/door",
+        "topicPower": "hotel/room/F01/power"
+    }
+}
+
+### -----------------------------------------------------------
+
+### 3. Cập nhật trạng thái phòng M-01 sang Bảo trì
+PUT {{baseUrl}}/rooms/M-01
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "status": "maintenance"
+}
+
+### -----------------------------------------------------------
+
+### 4. Lấy danh sách để kiểm tra
+GET {{baseUrl}}/rooms
