@@ -165,3 +165,113 @@ exports.getAllBookingsForAdmin = async (req, res) => {
     });
   }
 };
+
+// --- LẤY CHI TIẾT 1 BOOKING ---
+exports.getBookingById = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    const booking = await Booking.findById(bookingId)
+      .populate("userId", "fullName email phone")
+      .populate("packageId", "name hours price")
+      .populate("roomId", "label floor");
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn đặt phòng này." });
+    }
+
+    res.status(200).json({ success: true, data: booking });
+  } catch (error) {
+    console.error("Lỗi getBookingById:", error);
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi lấy chi tiết đơn." });
+  }
+};
+
+// --- CẬP NHẬT BOOKING ---
+exports.updateBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const updateData = req.body;
+
+    // findByIdAndUpdate: Tìm và update luôn.
+    // - new: true -> Trả về data MỚI SAU KHI UPDATE (chứ không phải data cũ)
+    // - runValidators: true -> Ép Mongoose phải check lại Enum của status (chống việc update bậy bạ status thành "abc")
+    const updatedBooking = await Booking.findByIdAndUpdate(bookingId, updateData, { new: true, runValidators: true });
+
+    if (!updatedBooking) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn đặt phòng để cập nhật." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Cập nhật đơn đặt phòng thành công!",
+      data: updatedBooking,
+    });
+  } catch (error) {
+    console.error("Lỗi updateBooking:", error);
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi cập nhật đơn. Có thể sai format dữ liệu." });
+  }
+};
+
+// --- XÓA BOOKING ---
+exports.deleteBookingById = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    const deletedBooking = await Booking.findByIdAndDelete(bookingId);
+
+    if (!deletedBooking) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn đặt phòng để xóa." });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã xóa vĩnh viễn đơn đặt phòng ${bookingId}.`,
+    });
+  } catch (error) {
+    console.error("Lỗi deleteBookingById:", error);
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi xóa đơn." });
+  }
+};
+
+// --- USER TỰ HỦY ĐƠN (Self-Service Cancel) ---
+exports.cancelBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const userId = req.user.id;
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy đơn này." });
+    }
+
+    if (booking.userId.toString() !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Không thể hủy đơn của người khác",
+      });
+    }
+
+    // 3. Kiểm tra điều kiện hủy (Ví dụ: Chỉ cho hủy nếu đơn đang 'pending' hoặc chưa đến giờ)
+    if (booking.status === "active" || booking.status === "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Không thể hủy phòng đang dùng hoặc đã dùng xong",
+      });
+    }
+
+    // 4. Tiến hành cập nhật trạng thái thành 'cancelled'
+    booking.status = "cancelled";
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Đã hủy đơn thành công. Hẹn gặp lại lần sau!",
+      data: booking,
+    });
+  } catch (error) {
+    console.error("Lỗi cancelBooking:", error);
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi hủy đơn." });
+  }
+};

@@ -13,4 +13,15 @@ router.get("/", bookingController.getBookings);
 // GET /api/bookings/admin
 router.get("/admin", isAuth, isAdmin, bookingController.getAllBookingsForAdmin);
 
+// GET chi tiết 1 booking
+router.get("/:id", bookingController.getBookingById);
+
+// PUT (hoặc PATCH) để update booking (Chỉ admin mới được sửa)
+router.put("/:id", isAuth, isAdmin, bookingController.updateBooking);
+
+// DELETE để xóa cứng booking (Chỉ admin mới được xóa)
+router.delete("/:id", isAuth, isAdmin, bookingController.deleteBookingById);
+
+// PATCH /api/bookings/123/cancel để khách có thể hủy phòng
+router.patch("/:id/cancel", isAuth, bookingController.cancelBooking);
 module.exports = router;
