@@ -12,6 +12,7 @@ const reviewRoutes = require("./routes/Review");
 const serviceRoutes = require("./routes/ServicePackage");
 const invoiceRoutes = require("./routes/Invoice");
 const sosAlert = require("./routes/SosAlert");
+const user = require("./routes/User");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/service-packages", serviceRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/sos", sosAlert);
+app.use("/api/users", user);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Server is running" });
