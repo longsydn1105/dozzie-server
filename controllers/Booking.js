@@ -275,3 +275,24 @@ exports.cancelBooking = async (req, res) => {
     res.status(500).json({ success: false, message: "Lỗi hệ thống khi hủy đơn." });
   }
 };
+
+// --- LẤY TẤT CẢ BOOKING CỦA CHÍNH MÌNH (Lịch sử cá nhân) ---
+exports.getMyBookings = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const bookings = await Booking.find({ userId: userId })
+      .populate("packageId", "name hours price") // Lấy thông tin gói để show ra UI
+      .populate("roomId", "label floor") // Lấy tên phòng
+      .sort({ createdAt: -1 }); // Đơn mới nhất xếp lên đầu
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings,
+    });
+  } catch (error) {
+    console.error("Lỗi getMyBookings:", error);
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi lấy lịch sử đặt phòng." });
+  }
+};

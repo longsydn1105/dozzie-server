@@ -24,4 +24,7 @@ router.delete("/:id", isAuth, isAdmin, bookingController.deleteBookingById);
 
 // PATCH /api/bookings/123/cancel để khách có thể hủy phòng
 router.patch("/:id/cancel", isAuth, bookingController.cancelBooking);
+
+// Get /api/bookings/my-bookings
+router.get("/my-bookings", isAuth, bookingController.getMyBookings);
 module.exports = router;
