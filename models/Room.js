@@ -16,7 +16,7 @@ const roomSchema = new Schema(
     floor: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["available", "occupied", "maintenance"],
+      enum: ["available", "occupied", "maintenance", "cleaning"],
       default: "available",
     },
     iotConfig: {

@@ -22,6 +22,15 @@ exports.getRooms = async (req, res) => {
 exports.createRoom = async (req, res) => {
   try {
     const { _id, label, gender, floor, status, iotConfig } = req.body;
+    // Đếm số phòng hiện có ở tầng đó
+    const count = await Room.countDocuments({ floor });
+
+    if (count >= 20) {
+      return res.status(400).json({
+        success: false,
+        message: `Tầng ${floor} đã đạt giới hạn tối đa 20 phòng.`,
+      });
+    }
 
     // Kiểm tra xem ID (M-01, F-01) đã tồn tại chưa
     const existingRoom = await Room.findById(_id);
@@ -82,5 +91,35 @@ exports.deleteRoom = async (req, res) => {
     res.status(200).json({ success: true, message: "Đã xóa phòng khỏi hệ thống." });
   } catch (error) {
     res.status(500).json({ success: false, message: "Lỗi xóa phòng: " + error.message });
+  }
+};
+
+/**
+ * Truy vấn thông tin chi tiết của một phòng dựa trên ID
+ */
+exports.getRoomById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const room = await Room.findById(id);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Cảnh báo: Không tìm thấy dữ liệu cho mã phòng này.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Truy vấn dữ liệu chi tiết thành công.",
+      data: room,
+    });
+  } catch (error) {
+    console.error("Hệ thống lỗi tại getRoomById:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống: Không thể truy xuất dữ liệu phòng.",
+    });
   }
 };
