@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 // 1. Hàm isAuth: Kiểm tra xem User đã đăng nhập (có Token xịn) chưa
-exports.isAuth = (req, res, next) => {
+exports.isAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -14,9 +15,28 @@ exports.isAuth = (req, res, next) => {
   const token = authHeader.split(" ")[1];
 
   try {
+    // 1. Giải mã token để lấy ID của user
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Lưu thông tin giải mã (id, role) vào đối tượng req để dùng ở Controller
-    req.user = decoded;
+
+    // --- 2. BẮT ĐẦU CHECK TRONG DATABASE ---
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Tài khoản không còn tồn tại trên hệ thống.",
+      });
+    }
+
+    if (user.status === "banned") {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin!",
+      });
+    }
+
+    req.user = user;
+
     next();
   } catch (error) {
     return res.status(401).json({
