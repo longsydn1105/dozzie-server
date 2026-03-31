@@ -79,9 +79,16 @@ exports.login = async (req, res) => {
       return res.status(404).json({ message: "Email không tồn tại" });
     }
 
+    if (user.status === "banned") {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin!",
+      });
+    }
+
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Mật khẩu sai rồi Đại Ca!" });
+      return res.status(400).json({ success: false, message: "Mật khẩu sai rồi hoặc tài khoản rồi!" });
     }
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "3d" });
