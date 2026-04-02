@@ -64,3 +64,70 @@ exports.getInvoices = async (req, res) => {
     });
   }
 };
+
+// --- KHÁCH: THANH TOÁN HÓA ĐƠN ---
+exports.markAsPaid = async (req, res) => {
+  try {
+    const invoiceId = req.params.id;
+    const userId = req.user.id;
+
+    // Tìm hóa đơn. Bắt buộc phải check userId để tránh thằng này thanh toán giùm thằng kia
+    const invoice = await Invoice.findOne({ _id: invoiceId, userId: userId });
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn của bạn." });
+    }
+
+    // Chỉ hóa đơn 'pending' mới được thanh toán
+    if (invoice.paymentStatus !== "pending") {
+      return res.status(400).json({ success: false, message: "Hóa đơn này đã được xử lý từ trước!" });
+    }
+
+    // Cập nhật trạng thái và thời gian thanh toán
+    invoice.paymentStatus = "paid";
+    invoice.paidAt = new Date();
+
+    await invoice.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Thanh toán thành công! Chúc bạn có trải nghiệm tuyệt vời.",
+      data: invoice,
+    });
+  } catch (error) {
+    console.error("Lỗi markAsPaid:", error);
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi thanh toán." });
+  }
+};
+
+// --- ADMIN: HOÀN TIỀN CHO KHÁCH ---
+exports.refundInvoice = async (req, res) => {
+  try {
+    const invoiceId = req.params.id;
+
+    const invoice = await Invoice.findById(invoiceId);
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn trên hệ thống." });
+    }
+
+    // Chỉ hoàn tiền cho đơn đã 'paid'
+    if (invoice.paymentStatus !== "paid") {
+      return res.status(400).json({ success: false, message: "Chỉ có thể hoàn tiền cho hóa đơn ĐÃ THANH TOÁN." });
+    }
+
+    // Đổi trạng thái
+    invoice.paymentStatus = "refunded";
+
+    await invoice.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Đã hoàn tiền (Refund) cho khách hàng thành công.",
+      data: invoice,
+    });
+  } catch (error) {
+    console.error("Lỗi refundInvoice:", error);
+    res.status(500).json({ success: false, message: "Lỗi hệ thống khi xử lý hoàn tiền." });
+  }
+};

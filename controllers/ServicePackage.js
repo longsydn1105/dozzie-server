@@ -22,16 +22,17 @@ exports.getPackages = async (req, res) => {
   }
 };
 
-// Sửa gói dịch vụ (Chỉ Admin)
+// --- SỬA GÓI DỊCH VỤ (Chỉ Admin) ---
 exports.updatePackage = async (req, res) => {
   try {
     const { name, hours, price, isActive } = req.body;
     const packageId = req.params.id;
 
+    // Dùng { new: true } để Mongoose trả về object MỚI SAU KHI sửa
     const updatedPackage = await ServicePackages.findByIdAndUpdate(
       packageId,
       { name, hours, price, isActive },
-      { new: true, runValidators: true }, // runValidators để đảm bảo gửi lên không bị thiếu data required
+      { new: true, runValidators: true },
     );
 
     if (!updatedPackage) {
@@ -44,17 +45,19 @@ exports.updatePackage = async (req, res) => {
   }
 };
 
-// Xóa gói dịch vụ (Chỉ Admin)
+// --- XÓA GÓI DỊCH VỤ (Chỉ Admin) ---
 exports.deletePackage = async (req, res) => {
   try {
     const packageId = req.params.id;
+
+    // Xóa cứng (Hard Delete) khỏi database
     const deletedPackage = await ServicePackages.findByIdAndDelete(packageId);
 
     if (!deletedPackage) {
       return res.status(404).json({ success: false, message: "Không tìm thấy gói dịch vụ này!" });
     }
 
-    res.status(200).json({ success: true, message: "Đã xóa gói dịch vụ bay màu!" });
+    res.status(200).json({ success: true, message: "Đã xóa gói dịch vụ thành công!" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Lỗi khi xóa gói: " + error.message });
   }

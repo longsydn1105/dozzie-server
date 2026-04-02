@@ -4,8 +4,7 @@ const controller = require("../controllers/ServicePackage");
 const { isAuth, isAdmin } = require("../middleware/auth");
 
 router.get("/", controller.getPackages);
-
-router.post("/", isAuth, isAdmin, controller.createPackage);
+router.post("/", isAuth, isAdmin, controller.createPackage); // Chỉ Admin mới được tạo gói
 router.put("/:id", isAuth, isAdmin, controller.updatePackage);
 router.delete("/:id", isAuth, isAdmin, controller.deletePackage);
 
