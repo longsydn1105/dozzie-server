@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const reviewController = require("../controllers/Review");
-const { isAuth } = require("../middleware/auth");
+const { isAuth, isAdmin } = require("../middleware/auth");
 // Nhập kho thằng gác cổng
 
 // 1. GET /api/reviews (Ai cũng xem được)
