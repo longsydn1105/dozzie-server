@@ -13,7 +13,16 @@ exports.createPackage = async (req, res) => {
 };
 
 // Lấy danh sách gói đang hoạt động (Khách dùng để chọn khi đặt phòng)
-exports.getPackages = async (req, res) => {
+exports.getAllPackages = async (req, res) => {
+  try {
+    const packages = await ServicePackages.find({}).sort({ hours: 1 });
+    res.status(200).json({ success: true, data: packages });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getAllActivePackages = async (req, res) => {
   try {
     const packages = await ServicePackages.find({ isActive: true }).sort({ hours: 1 });
     res.status(200).json({ success: true, data: packages });

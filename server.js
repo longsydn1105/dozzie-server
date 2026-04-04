@@ -13,10 +13,11 @@ const serviceRoutes = require("./routes/ServicePackage");
 const invoiceRoutes = require("./routes/Invoice");
 const sosAlert = require("./routes/SosAlert");
 const user = require("./routes/User");
+const startCronJobs = require("./cron/bookingTimeout"); // Import hàm khởi chạy cron job
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+startCronJobs(); // Bắt đầu chạy cron job khi server khởi động
 // --- Middlewares (Các "trạm gác") ---
 app.use(cors()); // Cho phép client gọi API
 app.use(express.json()); // "Dịch" req.body từ JSON (quan trọng)

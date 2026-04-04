@@ -19,6 +19,7 @@
     "mongodb": "^7.0.0",
     "mongoose": "^8.19.4",
     "mongose": "^0.0.2-security",
+    "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "resend": "^6.6.0",
     "sib-api-v3-sdk": "^8.5.0",

@@ -1,3 +1,4 @@
+const Booking = require("../models/Booking");
 const Invoice = require("../models/Invoice");
 
 // Tạo hóa đơn (Thường gọi nội bộ sau khi Booking thành công)
@@ -26,9 +27,19 @@ exports.createInvoice = async (req, res) => {
 };
 
 // Khách xem hóa đơn của chính mình
+// Thay thế hàm getMyInvoices hiện tại của ông bằng hàm này
 exports.getMyInvoices = async (req, res) => {
   try {
-    const invoices = await Invoice.find({ userId: req.user.id }).populate("bookingId").sort({ createdAt: -1 });
+    const invoices = await Invoice.find({ userId: req.user.id })
+      .populate({
+        path: "bookingId",
+        populate: [
+          { path: "roomId" }, // Cứ để trống vậy, Mongoose sẽ tự hiểu. Nếu có Collection Room nó lấy Object, không có nó trả về chuỗi gốc "M-01"
+          { path: "packageId", select: "name hours", model: "ServicePackage" }, // Lấy tên gói và số giờ
+        ],
+      })
+      .sort({ createdAt: -1 });
+
     res.status(200).json({ success: true, data: invoices });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -86,8 +97,9 @@ exports.markAsPaid = async (req, res) => {
     // Cập nhật trạng thái và thời gian thanh toán
     invoice.paymentStatus = "paid";
     invoice.paidAt = new Date();
-
     await invoice.save();
+
+    await Booking.findByIdAndUpdate(invoice.bookingId, { status: "active" });
 
     res.status(200).json({
       success: true,

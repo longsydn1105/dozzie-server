@@ -2,17 +2,12 @@ const Booking = require("../models/Booking");
 const Room = require("../models/Room");
 const { v4: uuidv4 } = require("uuid"); // npm install uuid để tạo Key mở cửa
 const ServicePackages = require("../models/ServicePackages");
+const Invoice = require("../models/Invoice");
 
 // --- 1. TẠO BOOKING MỚI ---
 exports.createBooking = async (req, res) => {
   try {
-    const {
-      roomId, // "M-01"
-      packageId, // ID của gói 3h, 6h...
-      startTime, // ISO String từ Client gửi lên
-    } = req.body;
-
-    // Lấy userId từ Middleware Auth (Sau khi ông đã đăng nhập)
+    const { roomId, packageId, startTime } = req.body;
     const userId = req.user.id;
 
     // 1. Kiểm tra gói dịch vụ để tính giá và thời gian kết thúc
@@ -27,7 +22,7 @@ exports.createBooking = async (req, res) => {
     // 2. CHECK TRÙNG LỊCH (Overlap Logic)
     const isRoomBusy = await Booking.findOne({
       roomId: roomId,
-      status: { $ne: "cancelled" }, // Không tính các đơn đã hủy
+      status: { $ne: "cancelled" }, // Bỏ qua mấy đơn bùng/đã hủy
       $or: [{ startTime: { $lt: end }, endTime: { $gt: start } }],
     });
 
@@ -39,10 +34,9 @@ exports.createBooking = async (req, res) => {
     }
 
     // 3. TẠO MÃ KHÓA KỸ THUẬT SỐ (Digital Key)
-    // Thực tế sẽ là một chuỗi Hash, ở đây ta tạo chuỗi ngẫu nhiên 6 số cho dễ demo
     const digitalKey = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 4. LƯU BOOKING
+    // 4. LƯU BOOKING (Giữ chỗ - Pending)
     const newBooking = new Booking({
       userId,
       roomId,
@@ -50,19 +44,34 @@ exports.createBooking = async (req, res) => {
       startTime: start,
       endTime: end,
       totalPrice: packageInfo.price,
-      digitalKey, // Đây là cái khách sẽ dùng để mở cửa qua MQTT
-      status: "pending",
+      digitalKey,
+      status: "pending", // Đợi thanh toán
     });
 
     await newBooking.save();
 
-    // 5. CẬP NHẬT TRẠNG THÁI PHÒNG (Optional - tùy logic của ông)
-    // Thường thì khi khách Check-in mới đổi sang 'occupied'
+    // 5. TẠO HÓA ĐƠN ĐI KÈM (Cũng Pending luôn)
+    // Mã hóa đơn: INV-ThờiGian-SốNgẫuNhiên
+    const invoiceCode = `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+    const newInvoice = new Invoice({
+      bookingId: newBooking._id,
+      userId: userId,
+      invoiceCode: invoiceCode,
+      roomCharge: packageInfo.price,
+      totalAmount: packageInfo.price, // Tiền phòng gốc (chưa có phụ phí)
+      paymentStatus: "pending", // Đợi tiền ting ting
+    });
 
+    await newInvoice.save();
+
+    // 6. TRẢ VỀ CẢ 2 CHO CLIENT
     res.status(201).json({
       success: true,
-      message: "Đặt phòng thành công! Mã mở cửa sẽ khả dụng khi đến giờ nhận phòng.",
-      data: newBooking,
+      message: "Giữ chỗ thành công! Bạn có có 15 phút để hoàn tất thanh toán.",
+      data: {
+        booking: newBooking,
+        invoice: newInvoice,
+      },
     });
   } catch (error) {
     console.error("Lỗi createBooking:", error);
