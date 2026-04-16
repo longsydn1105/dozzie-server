@@ -49,18 +49,19 @@ exports.getMyInvoices = async (req, res) => {
 // --- DÀNH CHO ADMIN: LẤY TOÀN BỘ HÓA ĐƠN HỆ THỐNG ---
 exports.getInvoices = async (req, res) => {
   try {
-    // Lấy tất cả, sắp xếp cái mới nhất lên đầu
-    // Populate để xem tên khách và chi tiết phòng đã đặt
     const invoices = await Invoice.find()
       .populate({
         path: "userId",
-        select: "fullName email phone", // Chỉ lấy các field cần thiết
+        select: "fullName email phone", // Lấy tên, email, sđt khách
       })
       .populate({
         path: "bookingId",
-        select: "roomId startTime endTime",
+        populate: [
+          { path: "roomId" }, // Lấy thông tin phòng
+          { path: "packageId", select: "name hours", model: "ServicePackage" }, // Lấy thông tin gói
+        ],
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 }); // Mới nhất lên đầu
 
     res.status(200).json({
       success: true,
@@ -69,10 +70,7 @@ exports.getInvoices = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi getInvoices Admin:", error);
-    res.status(500).json({
-      success: false,
-      message: "Không thể truy xuất danh sách hóa đơn toàn hệ thống.",
-    });
+    res.status(500).json({ success: false, message: "Không thể truy xuất danh sách hóa đơn." });
   }
 };
 

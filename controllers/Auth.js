@@ -91,7 +91,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Mật khẩu sai rồi hoặc tài khoản rồi!" });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "3d" });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "3h" });
 
     // 5. "Trả" "vé" (token) "và" "info" "user" "về" "cho" "client"
     res.status(200).json({

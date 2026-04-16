@@ -4,6 +4,10 @@ const router = express.Router();
 const bookingController = require("../controllers/Booking");
 const { isAuth, isAdmin } = require("../middleware/auth");
 
+// ==========================================
+// 1. CÁC TUYẾN ĐƯỜNG TĨNH (STATIC ROUTES)
+// ==========================================
+
 // POST /api/bookings/
 router.post("/", isAuth, bookingController.createBooking);
 
@@ -12,6 +16,13 @@ router.get("/", bookingController.getBookings);
 
 // GET /api/bookings/admin
 router.get("/admin", isAuth, isAdmin, bookingController.getAllBookingsForAdmin);
+
+// Get /api/bookings/my-bookings
+router.get("/my-bookings", isAuth, bookingController.getMyBookings);
+
+// ==========================================
+// 2. CÁC TUYẾN ĐƯỜNG ĐỘNG (DYNAMIC ROUTES)
+// ==========================================
 
 // GET chi tiết 1 booking
 router.get("/:id", bookingController.getBookingById);
@@ -25,6 +36,4 @@ router.delete("/:id", isAuth, isAdmin, bookingController.deleteBookingById);
 // PATCH /api/bookings/123/cancel để khách có thể hủy phòng
 router.patch("/:id/cancel", isAuth, bookingController.cancelBooking);
 
-// Get /api/bookings/my-bookings
-router.get("/my-bookings", isAuth, bookingController.getMyBookings);
 module.exports = router;

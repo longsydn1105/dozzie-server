@@ -17,7 +17,7 @@ const startCronJobs = require("./cron/bookingTimeout"); // Import hàm khởi ch
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-startCronJobs(); // Bắt đầu chạy cron job khi server khởi động
+
 // --- Middlewares (Các "trạm gác") ---
 app.use(cors()); // Cho phép client gọi API
 app.use(express.json()); // "Dịch" req.body từ JSON (quan trọng)
@@ -46,6 +46,7 @@ mongoose
     app.listen(PORT, () => {
       console.log(`Server is running at http://localhost:${PORT}`);
     });
+    startCronJobs(); // Bắt đầu chạy cron job khi server khởi động
   })
   .catch((err) => {
     console.error("MongoDB fail to connect:", err);
