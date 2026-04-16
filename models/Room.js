@@ -1,24 +1,38 @@
 // server/models/room.model.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-const roomSchema = new Schema({
+const roomSchema = new Schema(
+  {
     // Ông tự đặt ID ("M-01", "F-01") nên ta định nghĩa _id là String
-    _id: { 
-        type: String, 
-        required: true,
-        uppercase: true, // "Tút" lại cho nó "pro"
-        trim: true 
+    _id: {
+      type: String,
+      required: true,
+      uppercase: true, // "Tút" lại cho nó "pro"
+      trim: true,
     },
     label: { type: String, required: true }, // Tên/Nhãn (vd: "Kén số 01")
-    gender: { type: String, required: true, enum: ['Nam', 'Nữ'] }, // Khu Nam/Nữ
+    gender: { type: String, required: true, enum: ["Nam", "Nữ"] }, // Khu Nam/Nữ
     floor: { type: Number, required: true },
-    status: { type: String, default: 'available', enum: ['available', 'occupied'] }
-}, {
+    status: {
+      type: String,
+      enum: ["available", "occupied", "maintenance", "cleaning"],
+      default: "available",
+    },
+    iotConfig: {
+      deviceId: { type: String, required: true },
+      topicDoor: { type: String, required: true },
+      topicPower: { type: String, required: true },
+      isOnline: { type: Boolean, default: false },
+      lastPing: { type: Date },
+    },
+  },
+  {
     // Tắt _id tự động của Mongoose vì ta đã dùng _id custom ở trên
     _id: false,
-    timestamps: true // Vẫn nên có
-});
+    timestamps: true, // Vẫn nên có
+  },
+);
 
 // Tên Model là 'Room', Mongoose sẽ tự tạo collection là 'rooms'
-module.exports = mongoose.model('Room', roomSchema);
+module.exports = mongoose.model("Room", roomSchema);

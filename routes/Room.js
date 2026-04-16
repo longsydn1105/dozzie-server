@@ -1,13 +1,13 @@
 // server/routes/Room.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const roomController = require('../controllers/Room');
-
+const roomController = require("../controllers/Room");
+const { isAuth, isAdmin } = require("../middleware/auth");
 // GET /api/rooms/
-router.get('/', roomController.getRooms);
-
-// (Tí nữa "thêm" "các" "route" "khác" "vào" "đây")
-// POST /api/rooms/
-// router.post('/', roomController.createRoom);
+router.get("/", roomController.getRooms);
+router.get("/:id", isAuth, roomController.getRoomById);
+router.post("/", isAuth, isAdmin, roomController.createRoom);
+router.put("/:id", isAuth, isAdmin, roomController.updateRoom);
+router.delete("/:id", isAuth, isAdmin, roomController.deleteRoom);
 
 module.exports = router;

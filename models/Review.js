@@ -9,6 +9,7 @@ const reviewSchema = new Schema(
       ref: "User",
       required: true,
     },
+    bookingId: { type: Schema.Types.ObjectId, ref: "Booking", required: true },
     rating: {
       type: Number,
       required: true,
@@ -27,7 +28,7 @@ const reviewSchema = new Schema(
   },
   {
     timestamps: true, // Tự động có createdAt, updatedAt
-  }
+  },
 );
 
 module.exports = mongoose.model("Review", reviewSchema);

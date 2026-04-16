@@ -1,0 +1,41 @@
+@baseUrl = http://localhost:3000/api
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YzE2NDRlZjUxNTRlOGM5ZTEwM2JkMyIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzc0MjgxODE5LCJleHAiOjE3NzQ1NDEwMTl9.1AbzSPR7a31P2KUZc5Lsug3_4l1orqCTktIExaQhtNM
+
+### 1. Lấy danh sách gói (Công khai - Ai cũng xem được)
+GET {{baseUrl}}/service-packages
+
+### -----------------------------------------------------------
+### 2. Tạo Gói 3 Giờ (Yêu cầu Admin Token)
+POST {{baseUrl}}/service-packages
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "name": "Gói Linh Hoạt (3 Giờ)",
+    "hours": 3,
+    "price": 150000
+}
+
+### -----------------------------------------------------------
+### 3. Tạo Gói Tiêu Chuẩn (6 Giờ)
+POST {{baseUrl}}/service-packages
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "name": "Gói Tiêu Chuẩn (6 Giờ)",
+    "hours": 6,
+    "price": 250000
+}
+
+### -----------------------------------------------------------
+### 4. Tạo Gói Nghỉ Ngơi (9 Giờ)
+POST {{baseUrl}}/service-packages
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+    "name": "Gói Nghỉ Ngơi (9 Giờ)",
+    "hours": 9,
+    "price": 350000
+}
