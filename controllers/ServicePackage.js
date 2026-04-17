@@ -12,7 +12,6 @@ exports.createPackage = async (req, res) => {
   }
 };
 
-// Lấy danh sách gói đang hoạt động (Khách dùng để chọn khi đặt phòng)
 exports.getAllPackages = async (req, res) => {
   try {
     const packages = await ServicePackages.find({}).sort({ hours: 1 });

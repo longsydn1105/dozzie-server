@@ -106,13 +106,12 @@ exports.getBookings = async (req, res) => {
 // --- API QUẢN LÝ ĐƠN ĐẶT PHÒNG (Dành cho Admin) ---
 exports.getAllBookingsForAdmin = async (req, res) => {
   try {
-    // Nhận tham số từ Frontend (ví dụ: /api/bookings/admin?timeFilter=today&status=cancelled)
-    const { timeFilter, status } = req.query;
+    // 1. Nhận thêm các tham số Custom mới từ Frontend
+    const { timeFilter, status, customDate, customWeek, customMonth } = req.query;
     let query = {};
 
-    // 1. Xử lý bộ lọc Trạng thái (Status)
+    // 2. Giữ nguyên logic Trạng thái của ông
     if (status) {
-      // Nếu Frontend muốn xem đơn hủy, mình lấy luôn cả đơn khách tự hủy và admin hủy
       if (status === "cancelled") {
         query.status = { $in: ["cancelled", "admin_cancelled"] };
       } else {
@@ -120,50 +119,73 @@ exports.getAllBookingsForAdmin = async (req, res) => {
       }
     }
 
-    // 2. Xử lý bộ lọc Thời gian (Dựa trên ngày tạo đơn - createdAt)
-    if (timeFilter) {
-      const now = new Date();
-      let start, end;
+    // 3. Xử lý bộ lọc Thời gian (Dựa trên ngày tạo đơn - createdAt)
+    let start, end;
+    const now = new Date();
 
+    // Ưu tiên bộ lọc Custom từ UI mới (Ngày, Tuần, Tháng)
+    if (customDate) {
+      // Đầu ngày đến cuối ngày
+      start = new Date(`${customDate}T00:00:00.000Z`);
+      end = new Date(`${customDate}T23:59:59.999Z`);
+    } else if (customMonth) {
+      // customMonth dạng "2024-04" -> Tách ra lấy năm và tháng
+      const [year, month] = customMonth.split("-");
+      start = new Date(year, month - 1, 1); // Ngày 1 đầu tháng
+      end = new Date(year, month, 0, 23, 59, 59, 999); // Ngày cuối cùng của tháng
+    } else if (customWeek) {
+      // customWeek dạng "2024-W16". (Tính toán theo chuẩn ISO-8601: Tuần bắt đầu từ Thứ 2)
+      const [year, week] = customWeek.split("-W");
+      const d = new Date(year, 0, 1);
+      const days = d.getDay() || 7; // Nếu chủ nhật (0) thì gán thành 7
+
+      d.setDate(d.getDate() + 4 - days); // Dời về Thứ 5 của tuần đầu tiên
+      d.setDate(d.getDate() + (week - 1) * 7); // Nhảy tới tuần cần tìm
+
+      start = new Date(d);
+      start.setDate(d.getDate() - 3); // Lùi về Thứ 2 (Đầu tuần)
+      start.setHours(0, 0, 0, 0);
+
+      end = new Date(start);
+      end.setDate(start.getDate() + 6); // Tiến tới Chủ Nhật (Cuối tuần)
+      end.setHours(23, 59, 59, 999);
+    }
+    // Fallback: Nếu không có filter mới, chạy logic timeFilter cũ 
+    else if (timeFilter) {
       if (timeFilter === "today") {
-        // Từ 00:00:00 đến 23:59:59 của ngày hôm nay
         start = new Date(now.setHours(0, 0, 0, 0));
         end = new Date(now.setHours(23, 59, 59, 999));
       } else if (timeFilter === "week") {
-        // Từ Thứ 2 đến Chủ Nhật tuần này
         const dayOfWeek = now.getDay();
-        const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Fix lỗi Chủ nhật là ngày 0
-
+        const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
         start = new Date(now);
         start.setDate(now.getDate() + distanceToMonday);
         start.setHours(0, 0, 0, 0);
-
         end = new Date(start);
         end.setDate(start.getDate() + 6);
         end.setHours(23, 59, 59, 999);
       } else if (timeFilter === "month") {
-        // Từ mùng 1 đến ngày cuối cùng của tháng này
         start = new Date(now.getFullYear(), now.getMonth(), 1);
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       }
-
-      // Đẩy điều kiện vào object query của Mongoose
-      if (start && end) {
-        query.createdAt = { $gte: start, $lte: end };
-      }
     }
 
-    // 3. Thực thi truy vấn và "Join" bảng (Populate)
-    const bookings = await Booking.find(query)
-      .populate("userId", "fullName email phone") // Lấy thông tin khách hàng (Sửa lại trường cho khớp với User model của ông)
-      .populate("packageId", "name hours price") // Lấy thông tin gói dịch vụ
-      .populate("roomId", "label floor") // Lấy thông tin phòng (Ref bằng String vẫn populate được nếu khớp _id)
-      .sort({ createdAt: -1 }); // Sắp xếp: Đơn mới nhất lên đầu tiên
+    // Nếu tính toán ra được khoảng thời gian thì nhét vào query
+    if (start && end) {
+      query.createdAt = { $gte: start, $lte: end };
+    }
 
-    // 4. Trả kết quả về Frontend
+    // 4. Thực thi truy vấn (Giữ nguyên y hệt của ông)
+    const bookings = await Booking.find(query)
+      .populate("userId", "fullName email phone")
+      .populate("packageId", "name hours price")
+      .populate("roomId", "label floor")
+      .sort({ createdAt: -1 });
+
+    // 5. Trả kết quả (Giữ nguyên)
     res.status(200).json({
       success: true,
-      count: bookings.length, // Bắn thêm cái count để Frontend show số lượng lên Badge
+      count: bookings.length,
       data: bookings,
     });
   } catch (error) {
