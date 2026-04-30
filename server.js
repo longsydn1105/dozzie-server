@@ -14,7 +14,7 @@ const invoiceRoutes = require("./routes/Invoice");
 const sosAlert = require("./routes/SosAlert");
 const user = require("./routes/User");
 const startCronJobs = require("./cron/bookingTimeout"); // Import hàm khởi chạy cron job
-
+require('./utils/mqttService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 

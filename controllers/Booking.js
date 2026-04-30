@@ -8,6 +8,9 @@ const Invoice = require("../models/Invoice");
 exports.createBooking = async (req, res) => {
   try {
     const { roomId, packageId, startTime } = req.body;
+    //Viết log đọc được dữ liệu từ client gửi lên để dev check
+    console.log("Received createBooking request with data:", { roomId, packageId, startTime });
+    
     const userId = req.user.id;
 
     // 1. Kiểm tra gói dịch vụ để tính giá và thời gian kết thúc
@@ -79,7 +82,7 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// --- 2. LẤY DANH SÁCH BOOKING (Dành cho Admin hoặc Lịch sử khách) ---
+// --- 2. LẤY DANH SÁCH BOOKING ---
 exports.getBookings = async (req, res) => {
   try {
     const { roomId, userId, status } = req.query;

@@ -9,5 +9,6 @@ router.get("/:id", isAuth, roomController.getRoomById);
 router.post("/", isAuth, isAdmin, roomController.createRoom);
 router.put("/:id", isAuth, isAdmin, roomController.updateRoom);
 router.delete("/:id", isAuth, isAdmin, roomController.deleteRoom);
+router.post("/iot-command", isAuth, roomController.sendIoTCommand);
 
 module.exports = router;

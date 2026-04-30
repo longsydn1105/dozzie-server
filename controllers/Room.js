@@ -1,6 +1,6 @@
 // server/controllers/Room.js
 const Room = require("../models/Room"); // "Lôi" model Room vào
-
+const {sendCommandToRoom} = require("../utils/mqttService")
 // Hàm "lấy" "tất cả" "phòng"
 exports.getRooms = async (req, res) => {
   try {
@@ -120,6 +120,38 @@ exports.getRoomById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Lỗi hệ thống: Không thể truy xuất dữ liệu phòng.",
+    });
+  }
+};
+
+// --- 4. GỬI LỆNH ĐIỀU KHIỂN PHÒNG QUA MQTT (IoT) ---
+exports.sendIoTCommand = async (req, res) => {
+  try {
+    // Rút trích DTOs từ App gửi lên
+    const { topic, payload } = req.body;
+
+    // 1. Validation (Bảo vệ Server)
+    if (!topic || !payload) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Lỗi: Dữ liệu (DTO) phải chứa topic và payload!" 
+      });
+    }
+
+    // 3. Nếu mọi thứ xanh mượt -> Gọi Service bắn lệnh
+    sendCommandToRoom(topic, payload);
+
+    // 4. Báo cáo về cho App
+    return res.status(200).json({ 
+      success: true, 
+      message: `Đã gửi lệnh xuống topic: ${topic}` 
+    });
+
+  } catch (error) {
+    console.error("Lỗi Controller sendIoTCommand:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Lỗi hệ thống Server!" 
     });
   }
 };

@@ -19,6 +19,7 @@
     "mongodb": "^7.0.0",
     "mongoose": "^8.19.4",
     "mongose": "^0.0.2-security",
+    "mqtt": "^5.15.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.10",
     "resend": "^6.6.0",
