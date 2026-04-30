@@ -20,6 +20,9 @@ router.get("/admin", isAuth, isAdmin, bookingController.getAllBookingsForAdmin);
 // Get /api/bookings/my-bookings
 router.get("/my-bookings", isAuth, bookingController.getMyBookings);
 
+// GET /api/bookings/my-status
+router.get("/my-status", isAuth, bookingController.getMyStatus);
+
 // ==========================================
 // 2. CÁC TUYẾN ĐƯỜNG ĐỘNG (DYNAMIC ROUTES)
 // ==========================================

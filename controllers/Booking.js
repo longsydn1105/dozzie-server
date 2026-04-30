@@ -330,3 +330,38 @@ exports.getMyBookings = async (req, res) => {
     res.status(500).json({ success: false, message: "Lỗi hệ thống khi lấy lịch sử đặt phòng." });
   }
 };
+
+// Lấy các đơn đặt phòng đang dang dở của mình (Dùng để check có đang vướng đơn nào chưa để chặn đặt mới)
+exports.getMyStatus = async (req, res) => {
+  try {
+    const userId = req.user.id; // Lấy từ token đăng nhập
+
+    // 1. Lấy TẤT CẢ các đơn đang dang dở (pending hoặc active)
+    const ongoingBookings = await Booking.find({
+      userId: userId,
+      status: { $in: ['pending', 'active'] }
+    });
+
+    // 2. Tìm xem có đơn nào đang active để làm chìa khóa không
+    const activeBooking = ongoingBookings.find(b => b.status === 'active');
+
+    // 3. Trả về Response "Đa năng"
+    return res.status(200).json({
+      success: true,
+      data: {
+        // Biến này phục vụ cho chức năng tương lai (Chặn đặt phòng)
+        // Nếu mảng ongoingBookings có phần tử -> không cho đặt nữa (false)
+        canBookNew: ongoingBookings.length === 0, 
+        
+        // Biến này phục vụ cho nút Điều khiển phòng hiện tại
+        activeBooking: activeBooking || null,
+
+        // Bonus: Báo cho App biết đang vướng bao nhiêu đơn
+        pendingCount: ongoingBookings.filter(b => b.status === 'pending').length 
+      }
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Lỗi Server" });
+  }
+};

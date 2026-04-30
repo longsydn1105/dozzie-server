@@ -127,31 +127,45 @@ exports.getRoomById = async (req, res) => {
 // --- 4. GỬI LỆNH ĐIỀU KHIỂN PHÒNG QUA MQTT (IoT) ---
 exports.sendIoTCommand = async (req, res) => {
   try {
-    // Rút trích DTOs từ App gửi lên
-    const { topic, payload } = req.body;
+    const { topic, payload, roomId, digitalKey } = req.body;
 
-    // 1. Validation (Bảo vệ Server)
-    if (!topic || !payload) {
-      return res.status(400).json({ 
+    // 1. Kiểm tra đầu vào cơ bản
+    if (!roomId || !digitalKey || !payload) {
+      return res.status(400).json({ success: false, message: "Thiếu thông tin điều khiển!" });
+    }
+
+    // 2. Tìm kiếm Booking hợp lệ
+    // Chỉ cho phép trạng thái 'active' (đã thanh toán/đã check-in)
+    const booking = await Booking.findOne({
+      roomId: roomId,
+      digitalKey: digitalKey,
+      status: 'active' 
+    });
+
+    if (!booking) {
+      return res.status(403).json({ 
         success: false, 
-        message: "Lỗi: Dữ liệu (DTO) phải chứa topic và payload!" 
+        message: "Chìa khóa không hợp lệ hoặc Booking chưa được kích hoạt (Pending)!" 
       });
     }
 
-    // 3. Nếu mọi thứ xanh mượt -> Gọi Service bắn lệnh
+    // 3. Kiểm tra thời gian (Time Window Validation)
+    const now = new Date();
+    if (now < booking.startTime || now > booking.endTime) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Chìa khóa đã hết hạn hoặc chưa đến giờ sử dụng!" 
+      });
+    }
+
+    // 4. Mọi thứ OK -> Bắn lệnh MQTT
+    // Topic ông có thể tự build ở đây để bảo mật: `dozzie/capsule/${roomId}`
     sendCommandToRoom(topic, payload);
 
-    // 4. Báo cáo về cho App
-    return res.status(200).json({ 
-      success: true, 
-      message: `Đã gửi lệnh xuống topic: ${topic}` 
-    });
+    return res.status(200).json({ success: true, message: "Lệnh đã được thực thi!" });
 
   } catch (error) {
-    console.error("Lỗi Controller sendIoTCommand:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Lỗi hệ thống Server!" 
-    });
+    console.error("Lỗi xác thực IoT:", error);
+    return res.status(500).json({ success: false, message: "Lỗi hệ thống!" });
   }
 };
