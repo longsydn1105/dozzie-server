@@ -1,4 +1,5 @@
 // server/controllers/Room.js
+const Booking = require("../models/Booking");
 const Room = require("../models/Room"); // "Lôi" model Room vào
 const {sendCommandToRoom} = require("../utils/mqttService")
 // Hàm "lấy" "tất cả" "phòng"

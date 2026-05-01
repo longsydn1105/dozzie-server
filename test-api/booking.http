@@ -1,0 +1,29 @@
+@baseUrl = http://localhost:3000/api
+
+### 1. ĐĂNG NHẬP (Lấy token user)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "longsydn1105@gmail.com",
+  "password": "123123"
+}
+
+### -----------------------------------------------------------
+
+### 2. TEST GET MY STATUS
+# Endpoint cần đăng nhập: GET /api/bookings/my-status
+# REST Client sẽ tự lấy token từ response login bên trên
+@token = {{login.response.body.token}}
+
+GET {{baseUrl}}/bookings/my-status
+Authorization: Bearer {{token}}
+
+### -----------------------------------------------------------
+
+### 3. TEST GET MY STATUS (DÁN TOKEN THỦ CÔNG)
+# Dùng case này nếu ông không muốn gọi login ở trên
+# @manualToken = DÁN_TOKEN_USER_VÀO_ĐÂY
+# GET {{baseUrl}}/bookings/my-status
+# Authorization: Bearer {{manualToken}}
