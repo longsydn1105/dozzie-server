@@ -1,8 +1,12 @@
 // server/server.js
 require("dotenv").config(); // "Load" file .env
+require("./utils/mqttService");
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors"); // "Chìa khoá" để client gọi được server
+const socketConfig = require("./utils/socket");
+const startCronJobs = require("./cron/bookingTimeout"); 
+const http = require('http');
 
 const bookingRoutes = require("./routes/Booking");
 const authRoutes = require("./routes/Auth");
@@ -13,8 +17,8 @@ const serviceRoutes = require("./routes/ServicePackage");
 const invoiceRoutes = require("./routes/Invoice");
 const sosAlert = require("./routes/SosAlert");
 const user = require("./routes/User");
-const startCronJobs = require("./cron/bookingTimeout"); // Import hàm khởi chạy cron job
-require('./utils/mqttService');
+const messageRoutes = require("./routes/Message");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -33,6 +37,13 @@ app.use("/api/service-packages", serviceRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/sos", sosAlert);
 app.use("/api/users", user);
+app.use("/api/chat", messageRoutes);
+
+// Khởi tạo HTTP Server
+const server = http.createServer(app);
+
+// Kích hoạt WebSocket
+socketConfig.init(server);
 
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Server is running" });
@@ -43,7 +54,7 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("MongoDB connected");
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`Server is running at http://localhost:${PORT}`);
     });
     startCronJobs(); // Bắt đầu chạy cron job khi server khởi động
