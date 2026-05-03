@@ -33,6 +33,11 @@ module.exports = {
           });
 
           io.to(bookingId).emit("receive_message", savedMessage);
+
+          if (senderRole !== "admin") {
+            // Bắn một tín hiệu ra ngoài không gian ảo, app Admin sẽ hứng cái này
+            io.emit("admin_global_notification", savedMessage);
+          }
         } catch (error) {
           console.error("Lỗi khi gửi tin nhắn Socket:", error);
         }

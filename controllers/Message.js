@@ -5,7 +5,7 @@ exports.getChatHistory = async (req, res) => {
     const { bookingId } = req.params;
 
     // Lấy tin nhắn cũ, sắp xếp từ cũ tới mới (tăng dần theo thời gian)
-    const messages = await Message.find({ bookingId: bookingId }).sort({ createdAt: 1 }).lean(); // Dùng .lean() cho nhẹ server vì chỉ cần đọc data
+    const messages = await Message.find({ bookingId: bookingId }).sort({ createdAt: 1 }).lean();
 
     return res.status(200).json({
       success: true,
