@@ -1,5 +1,5 @@
 const SosAlert = require("../models/SosAlert");
-
+const { getIo } = require("../utils/socket");
 // Khách tạo yêu cầu SOS
 exports.createAlert = async (req, res) => {
   try {
@@ -14,7 +14,14 @@ exports.createAlert = async (req, res) => {
     });
 
     await newAlert.save();
-    // Chỗ này sau này ông có thể thêm Socket.io để bắn thông báo Real-time cho Admin
+
+    const io = getIo();
+    io.emit("ADMIN_SOS_ALERT", {
+      sosId: newAlert._id,
+      roomId: roomId,
+      message: message,
+      time: newAlert.createdAt,
+    });
     res.status(201).json({ success: true, message: "Yêu cầu cứu hộ đã được gửi!" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

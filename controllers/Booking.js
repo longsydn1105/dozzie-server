@@ -113,7 +113,7 @@ exports.getAllBookingsForAdmin = async (req, res) => {
     const { timeFilter, status, customDate, customWeek, customMonth } = req.query;
     let query = {};
 
-    // 2. Giữ nguyên logic Trạng thái của ông
+    // 2. Giữ nguyên logic Trạng thái
     if (status) {
       if (status === "cancelled") {
         query.status = { $in: ["cancelled", "admin_cancelled"] };
