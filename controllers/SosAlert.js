@@ -1,29 +1,33 @@
 const SosAlert = require("../models/SosAlert");
-const { getIo } = require("../utils/socket");
+const { getIO } = require("../utils/socket");
 // Khách tạo yêu cầu SOS
 exports.createAlert = async (req, res) => {
   try {
     const { roomId, message } = req.body;
+
     const userId = req.user.id; // Lấy từ Token
 
     const newAlert = new SosAlert({
       userId,
-      roomId, // Lưu ý:roomId ở đây là String (M-01) như đã chốt
+      roomId,
       message,
       status: "pending",
     });
 
     await newAlert.save();
 
-    const io = getIo();
+    const io = getIO();
     io.emit("ADMIN_SOS_ALERT", {
       sosId: newAlert._id,
       roomId: roomId,
       message: message,
       time: newAlert.createdAt,
     });
-    res.status(201).json({ success: true, message: "Yêu cầu cứu hộ đã được gửi!" });
+
+    const responseData = { success: true, message: "Yêu cầu cứu hộ đã được gửi!" };
+    res.status(201).json(responseData);
   } catch (error) {
+    console.error("❌ Error in createAlert:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
