@@ -1,5 +1,20 @@
 const admin = require("firebase-admin");
+const path = require("path");
+const fs = require("fs");
 const serviceAccount = require("../config/firebase-service-account.json");
+
+let serviceAccount;
+
+const renderSecretPath = "/etc/secrets/firebase-service-account.json";
+const localConfigPath = path.join(__dirname, "../config/firebase-service-account.json");
+
+if (fs.existsSync(renderSecretPath)) {
+  serviceAccount = require(renderSecretPath);
+  console.log("🟢 [FCM] Đang đọc Firebase Key từ Render Secret");
+} else {
+  serviceAccount = require(localConfigPath);
+  console.log("💻 [FCM] Đang đọc Firebase Key từ máy Local");
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
