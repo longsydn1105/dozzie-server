@@ -1,12 +1,14 @@
 const Booking = require("../models/Booking");
 const Invoice = require("../models/Invoice");
 
-// Tạo hóa đơn (Thường gọi nội bộ sau khi Booking thành công)
+/**
+ * Tạo hóa đơn cho booking
+ * Input: bookingId, userId, roomCharge, extraFee | Output: New invoice
+ */
 exports.createInvoice = async (req, res) => {
   try {
     const { bookingId, userId, roomCharge, extraFee } = req.body;
 
-    // Tạo mã hóa đơn duy nhất: INV-NgàyTháng-SốNgẫu Nhiên
     const invoiceCode = `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
 
     const newInvoice = new Invoice({
@@ -26,17 +28,16 @@ exports.createInvoice = async (req, res) => {
   }
 };
 
-// Khách xem hóa đơn của chính mình
-// Thay thế hàm getMyInvoices hiện tại của ông bằng hàm này
+/**
+ * Lấy hóa đơn của người dùng
+ * Input: userId (from token) | Output: User's invoices with booking details
+ */
 exports.getMyInvoices = async (req, res) => {
   try {
     const invoices = await Invoice.find({ userId: req.user.id })
       .populate({
         path: "bookingId",
-        populate: [
-          { path: "roomId" }, // Cứ để trống vậy, Mongoose sẽ tự hiểu. Nếu có Collection Room nó lấy Object, không có nó trả về chuỗi gốc "M-01"
-          { path: "packageId", select: "name hours", model: "ServicePackage" }, // Lấy tên gói và số giờ
-        ],
+        populate: [{ path: "roomId" }, { path: "packageId", select: "name hours", model: "ServicePackage" }],
       })
       .sort({ createdAt: -1 });
 
@@ -46,22 +47,22 @@ exports.getMyInvoices = async (req, res) => {
   }
 };
 
-// --- DÀNH CHO ADMIN: LẤY TOÀN BỘ HÓA ĐƠN HỆ THỐNG ---
+/**
+ * Lấy tất cả hóa đơn (Admin)
+ * Input: N/A | Output: All invoices with user & booking details
+ */
 exports.getInvoices = async (req, res) => {
   try {
     const invoices = await Invoice.find()
       .populate({
         path: "userId",
-        select: "fullName email phone", // Lấy tên, email, sđt khách
+        select: "fullName email phone",
       })
       .populate({
         path: "bookingId",
-        populate: [
-          { path: "roomId" }, // Lấy thông tin phòng
-          { path: "packageId", select: "name hours", model: "ServicePackage" }, // Lấy thông tin gói
-        ],
+        populate: [{ path: "roomId" }, { path: "packageId", select: "name hours", model: "ServicePackage" }],
       })
-      .sort({ createdAt: -1 }); // Mới nhất lên đầu
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -74,25 +75,25 @@ exports.getInvoices = async (req, res) => {
   }
 };
 
-// --- KHÁCH: THANH TOÁN HÓA ĐƠN ---
+/**
+ * Người dùng thanh toán hóa đơn
+ * Input: invoiceId | Output: Marked invoice as paid, booking activated
+ */
 exports.markAsPaid = async (req, res) => {
   try {
     const invoiceId = req.params.id;
     const userId = req.user.id;
 
-    // Tìm hóa đơn. Bắt buộc phải check userId để tránh thằng này thanh toán giùm thằng kia
     const invoice = await Invoice.findOne({ _id: invoiceId, userId: userId });
 
     if (!invoice) {
       return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn của bạn." });
     }
 
-    // Chỉ hóa đơn 'pending' mới được thanh toán
     if (invoice.paymentStatus !== "pending") {
       return res.status(400).json({ success: false, message: "Hóa đơn này đã được xử lý từ trước!" });
     }
 
-    // Cập nhật trạng thái và thời gian thanh toán
     invoice.paymentStatus = "paid";
     invoice.paidAt = new Date();
     await invoice.save();
@@ -110,7 +111,10 @@ exports.markAsPaid = async (req, res) => {
   }
 };
 
-// --- ADMIN: HOÀN TIỀN CHO KHÁCH ---
+/**
+ * Admin hoàn tiền cho khách
+ * Input: invoiceId | Output: Invoice marked as refunded
+ */
 exports.refundInvoice = async (req, res) => {
   try {
     const invoiceId = req.params.id;
@@ -121,12 +125,10 @@ exports.refundInvoice = async (req, res) => {
       return res.status(404).json({ success: false, message: "Không tìm thấy hóa đơn trên hệ thống." });
     }
 
-    // Chỉ hoàn tiền cho đơn đã 'paid'
     if (invoice.paymentStatus !== "paid") {
       return res.status(400).json({ success: false, message: "Chỉ có thể hoàn tiền cho hóa đơn ĐÃ THANH TOÁN." });
     }
 
-    // Đổi trạng thái
     invoice.paymentStatus = "refunded";
 
     await invoice.save();

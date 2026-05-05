@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// 1. Hàm isAuth: Kiểm tra xem User đã đăng nhập (có Token xịn) chưa
+// 1. Hàm isAuth: Kiểm tra xem User đã đăng nhập chưa
 exports.isAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -15,10 +15,7 @@ exports.isAuth = async (req, res, next) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    // 1. Giải mã token để lấy ID của user
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // --- 2. BẮT ĐẦU CHECK TRONG DATABASE ---
     const user = await User.findById(decoded.id);
 
     if (!user) {
@@ -50,7 +47,7 @@ exports.isAuth = async (req, res, next) => {
 // Lưu ý: Hàm này phải đứng SAU isAuth trong Route
 exports.isAdmin = (req, res, next) => {
   if (req.user && req.user.role === "admin") {
-    next(); // Là Admin thì cho qua
+    next();
   } else {
     return res.status(403).json({
       success: false,

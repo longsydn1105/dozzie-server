@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
+/**
+ * Booking schema - đơn đặt phòng
+ */
 const bookingSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -15,10 +18,10 @@ const bookingSchema = new Schema(
 
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
-    actualCheckIn: { type: Date }, // Updated when the digital key is used for the first time
-
+    actualCheckIn: { type: Date },
     totalPrice: { type: Number, required: true },
-    digitalKey: { type: String, required: true }, // Hash string for door unlocking
+    digitalKey: { type: String, required: true },
+    isReminded10Min: { type: Boolean, default: false },
   },
   {
     timestamps: true,

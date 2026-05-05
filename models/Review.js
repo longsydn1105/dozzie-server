@@ -1,7 +1,9 @@
-// server/models/Review.js
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
+/**
+ * Review schema - đánh giá phòng
+ */
 const reviewSchema = new Schema(
   {
     userId: {
@@ -27,7 +29,7 @@ const reviewSchema = new Schema(
     },
   },
   {
-    timestamps: true, // Tự động có createdAt, updatedAt
+    timestamps: true,
   },
 );
 

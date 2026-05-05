@@ -1,8 +1,11 @@
 const User = require("../models/User");
-const bcrypt = require("bcryptjs"); // Nhớ cài: npm install bcryptjs
+const bcrypt = require("bcryptjs");
 const { hashPassword } = require("../utils/passwordHelper");
 
-// --- 1. LẤY TẤT CẢ USER (Admin only) ---
+/**
+ * Lấy tất cả user
+ * Input: N/A | Output: All users (without password)
+ */
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find().select("-password").sort({ createdAt: -1 });
@@ -12,7 +15,10 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// --- 2. LẤY CHI TIẾT 1 USER THEO ID (Admin) ---
+/**
+ * Lấy chi tiết một user theo ID
+ * Input: userId | Output: User data (without password)
+ */
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password");
@@ -23,11 +29,14 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// --- 3. USER TỰ CẬP NHẬT PROFILE (Chính chủ) ---
+/**
+ * Người dùng tự cập nhật profile của mình
+ * Input: fullName, phone, password | Output: Updated user profile
+ */
 exports.updateProfile = async (req, res) => {
   try {
     const { fullName, phone, password } = req.body;
-    const userId = req.user.id; // Lấy từ Token, bao an toàn
+    const userId = req.user.id;
 
     const updateData = {};
     if (fullName) updateData.fullName = fullName;
@@ -51,13 +60,15 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// --- 4. ADMIN CẬP NHẬT USER ---
+/**
+ * Admin cập nhật thông tin user
+ * Input: userId, fullName, phone, role, status | Output: Updated user
+ */
 exports.adminUpdateUser = async (req, res) => {
   try {
     const { fullName, phone, role, status } = req.body;
     const targetId = req.params.id;
 
-    // Admin có thể đổi cả role và status
     const updatedUser = await User.findByIdAndUpdate(
       targetId,
       { fullName, phone, role, status },
@@ -72,7 +83,10 @@ exports.adminUpdateUser = async (req, res) => {
   }
 };
 
-// --- 5. XÓA USER (Admin only) ---
+/**
+ * Admin xóa user
+ * Input: userId | Output: Deleted user confirmation
+ */
 exports.deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);

@@ -1,7 +1,10 @@
 const Review = require("../models/Review");
-const Booking = require("../models/Booking"); // Nhớ import thêm Booking để check nếu cần
+const Booking = require("../models/Booking");
 
-// --- 1. TẠO REVIEW MỚI ---
+/**
+ * Tạo review mới
+ * Input: bookingId, rating, comment | Output: New review
+ */
 exports.createReview = async (req, res) => {
   try {
     const { bookingId, rating, comment } = req.body;
@@ -34,36 +37,33 @@ exports.createReview = async (req, res) => {
   }
 };
 
-// --- 2. LẤY DANH SÁCH REVIEW (1 Hàm Cân Tất Cả Filter) ---
+/**
+ * Lấy danh sách review (có lọc theo rating, userId, bookingId, isShow)
+ * Input: rating, userId, bookingId, isShow (optional) | Output: Reviews with user & room info
+ */
 exports.getReviews = async (req, res) => {
   try {
-    // Hứng các query từ URL (VD: /api/reviews?rating=5&userId=123)
     const { rating, userId, bookingId, isShow } = req.query;
 
-    // Mặc định khách hàng chỉ xem được review đang hiển thị
     const filter = { isShow: true };
 
-    // Nếu Admin muốn xem cả review bị ẩn (truyền isShow=all)
     if (isShow === "all") {
       delete filter.isShow;
     } else if (isShow === "false") {
       filter.isShow = false;
     }
 
-    // Nhét thêm các điều kiện lọc nếu có truyền lên
     if (rating) filter.rating = Number(rating);
     if (userId) filter.userId = userId;
     if (bookingId) filter.bookingId = bookingId;
 
     const reviews = await Review.find(filter)
       .sort({ createdAt: -1 })
-      // Sửa lỗi 2: Dùng fullName thay vì displayName
       .populate("userId", "fullName email")
-      // Lấy thêm thông tin phòng từ Booking để biết khách đang review phòng nào
       .populate({
         path: "bookingId",
         select: "roomId",
-        populate: { path: "roomId", select: "label" }, // Lấy tên phòng (label)
+        populate: { path: "roomId", select: "label" },
       });
 
     res.status(200).json({
@@ -78,7 +78,10 @@ exports.getReviews = async (req, res) => {
   }
 };
 
-// --- 1. LẤY REVIEW CỦA CHÍNH MÌNH (Cho App Mobile của Khách) ---
+/**
+ * Lấy review của người dùng
+ * Input: userId (from token) | Output: User's reviews with room details
+ */
 exports.getMyReviews = async (req, res) => {
   try {
     const userId = req.user.id; // Lấy từ Token
@@ -96,7 +99,10 @@ exports.getMyReviews = async (req, res) => {
   }
 };
 
-// --- 2. SỬA REVIEW CỦA CHÍNH MÌNH (Cho Khách) ---
+/**
+ * Cập nhật review của người dùng
+ * Input: reviewId, rating, comment | Output: Updated review
+ */
 exports.updateReview = async (req, res) => {
   try {
     const { rating, comment } = req.body;
@@ -122,7 +128,10 @@ exports.updateReview = async (req, res) => {
   }
 };
 
-// --- 3. XÓA REVIEW CỦA CHÍNH MÌNH (Cho Khách) ---
+/**
+ * Xóa review của người dùng
+ * Input: reviewId | Output: Deleted review
+ */
 exports.deleteReview = async (req, res) => {
   try {
     const reviewId = req.params.id;
@@ -142,7 +151,10 @@ exports.deleteReview = async (req, res) => {
   }
 };
 
-// --- 4. ADMIN XÓA REVIEW BẤT KỲ (Cho Admin Web) ---
+/**
+ * Admin xóa bất kỳ review
+ * Input: reviewId | Output: Deleted review
+ */
 exports.adminDeleteReview = async (req, res) => {
   try {
     const deletedReview = await Review.findByIdAndDelete(req.params.id);

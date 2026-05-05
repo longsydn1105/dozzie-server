@@ -1,19 +1,19 @@
 const Booking = require("../models/Booking");
 const Room = require("../models/Room");
-const { v4: uuidv4 } = require("uuid"); // npm install uuid để tạo Key mở cửa
+const { v4: uuidv4 } = require("uuid");
 const ServicePackages = require("../models/ServicePackages");
 const Invoice = require("../models/Invoice");
 
-// --- 1. TẠO BOOKING MỚI ---
+/**
+ * Tạo booking mới - giữ chỗ phòng trong 15 phút chờ thanh toán
+ * Input: roomId, packageId, startTime | Output: Booking & invoice data
+ */
 exports.createBooking = async (req, res) => {
   try {
     const { roomId, packageId, startTime } = req.body;
-    //Viết log đọc được dữ liệu từ client gửi lên để dev check
-    console.log("Received createBooking request with data:", { roomId, packageId, startTime });
-    
+
     const userId = req.user.id;
 
-    // 1. Kiểm tra gói dịch vụ để tính giá và thời gian kết thúc
     const packageInfo = await ServicePackages.findById(packageId);
     if (!packageInfo) {
       return res.status(404).json({ success: false, message: "Gói dịch vụ không tồn tại." });
@@ -22,10 +22,9 @@ exports.createBooking = async (req, res) => {
     const start = new Date(startTime);
     const end = new Date(start.getTime() + packageInfo.hours * 60 * 60 * 1000);
 
-    // 2. CHECK TRÙNG LỊCH (Overlap Logic)
     const isRoomBusy = await Booking.findOne({
       roomId: roomId,
-      status: { $ne: "cancelled" }, // Bỏ qua mấy đơn bùng/đã hủy
+      status: { $ne: "cancelled" },
       $or: [{ startTime: { $lt: end }, endTime: { $gt: start } }],
     });
 
@@ -36,10 +35,8 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // 3. TẠO MÃ KHÓA KỸ THUẬT SỐ (Digital Key)
     const digitalKey = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 4. LƯU BOOKING (Giữ chỗ - Pending)
     const newBooking = new Booking({
       userId,
       roomId,
@@ -48,26 +45,23 @@ exports.createBooking = async (req, res) => {
       endTime: end,
       totalPrice: packageInfo.price,
       digitalKey,
-      status: "pending", // Đợi thanh toán
+      status: "pending",
     });
 
     await newBooking.save();
 
-    // 5. TẠO HÓA ĐƠN ĐI KÈM (Cũng Pending luôn)
-    // Mã hóa đơn: INV-ThờiGian-SốNgẫuNhiên
     const invoiceCode = `INV-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
     const newInvoice = new Invoice({
       bookingId: newBooking._id,
       userId: userId,
       invoiceCode: invoiceCode,
       roomCharge: packageInfo.price,
-      totalAmount: packageInfo.price, // Tiền phòng gốc (chưa có phụ phí)
-      paymentStatus: "pending", // Đợi tiền ting ting
+      totalAmount: packageInfo.price,
+      paymentStatus: "pending",
     });
 
     await newInvoice.save();
 
-    // 6. TRẢ VỀ CẢ 2 CHO CLIENT
     res.status(201).json({
       success: true,
       message: "Giữ chỗ thành công! Bạn có có 15 phút để hoàn tất thanh toán.",
@@ -82,7 +76,10 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-// --- 2. LẤY DANH SÁCH BOOKING ---
+/**
+ * Lấy danh sách booking với bộ lọc
+ * Input: roomId, userId, status (optional) | Output: Booking list
+ */
 exports.getBookings = async (req, res) => {
   try {
     const { roomId, userId, status } = req.query;
@@ -93,8 +90,8 @@ exports.getBookings = async (req, res) => {
     if (status) filter.status = status;
 
     const bookings = await Booking.find(filter)
-      .populate("userId", "fullName email") // Lấy thêm tên khách
-      .populate("packageId", "name hours") // Lấy thêm tên gói
+      .populate("userId", "fullName email")
+      .populate("packageId", "name hours")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -106,14 +103,15 @@ exports.getBookings = async (req, res) => {
   }
 };
 
-// --- API QUẢN LÝ ĐƠN ĐẶT PHÒNG (Dành cho Admin) ---
+/**
+ * Lấy tất cả booking (Admin) - hỗ trợ lọc theo ngày, tuần, tháng
+ * Input: status, customDate, customWeek, customMonth | Output: Filtered bookings
+ */
 exports.getAllBookingsForAdmin = async (req, res) => {
   try {
-    // 1. Nhận thêm các tham số Custom mới từ Frontend
     const { timeFilter, status, customDate, customWeek, customMonth } = req.query;
     let query = {};
 
-    // 2. Giữ nguyên logic Trạng thái
     if (status) {
       if (status === "cancelled") {
         query.status = { $in: ["cancelled", "admin_cancelled"] };
@@ -122,39 +120,32 @@ exports.getAllBookingsForAdmin = async (req, res) => {
       }
     }
 
-    // 3. Xử lý bộ lọc Thời gian (Dựa trên ngày tạo đơn - createdAt)
     let start, end;
     const now = new Date();
 
-    // Ưu tiên bộ lọc Custom từ UI mới (Ngày, Tuần, Tháng)
     if (customDate) {
-      // Đầu ngày đến cuối ngày
       start = new Date(`${customDate}T00:00:00.000Z`);
       end = new Date(`${customDate}T23:59:59.999Z`);
     } else if (customMonth) {
-      // customMonth dạng "2024-04" -> Tách ra lấy năm và tháng
       const [year, month] = customMonth.split("-");
-      start = new Date(year, month - 1, 1); // Ngày 1 đầu tháng
-      end = new Date(year, month, 0, 23, 59, 59, 999); // Ngày cuối cùng của tháng
+      start = new Date(year, month - 1, 1);
+      end = new Date(year, month, 0, 23, 59, 59, 999);
     } else if (customWeek) {
-      // customWeek dạng "2024-W16". (Tính toán theo chuẩn ISO-8601: Tuần bắt đầu từ Thứ 2)
       const [year, week] = customWeek.split("-W");
       const d = new Date(year, 0, 1);
-      const days = d.getDay() || 7; // Nếu chủ nhật (0) thì gán thành 7
+      const days = d.getDay() || 7;
 
-      d.setDate(d.getDate() + 4 - days); // Dời về Thứ 5 của tuần đầu tiên
-      d.setDate(d.getDate() + (week - 1) * 7); // Nhảy tới tuần cần tìm
+      d.setDate(d.getDate() + 4 - days);
+      d.setDate(d.getDate() + (week - 1) * 7);
 
       start = new Date(d);
-      start.setDate(d.getDate() - 3); // Lùi về Thứ 2 (Đầu tuần)
+      start.setDate(d.getDate() - 3);
       start.setHours(0, 0, 0, 0);
 
       end = new Date(start);
-      end.setDate(start.getDate() + 6); // Tiến tới Chủ Nhật (Cuối tuần)
+      end.setDate(start.getDate() + 6);
       end.setHours(23, 59, 59, 999);
-    }
-    // Fallback: Nếu không có filter mới, chạy logic timeFilter cũ 
-    else if (timeFilter) {
+    } else if (timeFilter) {
       if (timeFilter === "today") {
         start = new Date(now.setHours(0, 0, 0, 0));
         end = new Date(now.setHours(23, 59, 59, 999));
@@ -173,19 +164,16 @@ exports.getAllBookingsForAdmin = async (req, res) => {
       }
     }
 
-    // Nếu tính toán ra được khoảng thời gian thì nhét vào query
     if (start && end) {
       query.createdAt = { $gte: start, $lte: end };
     }
 
-    // 4. Thực thi truy vấn (Giữ nguyên y hệt của ông)
     const bookings = await Booking.find(query)
       .populate("userId", "fullName email phone")
       .populate("packageId", "name hours price")
       .populate("roomId", "label floor")
       .sort({ createdAt: -1 });
 
-    // 5. Trả kết quả (Giữ nguyên)
     res.status(200).json({
       success: true,
       count: bookings.length,
@@ -200,7 +188,10 @@ exports.getAllBookingsForAdmin = async (req, res) => {
   }
 };
 
-// --- LẤY CHI TIẾT 1 BOOKING ---
+/**
+ * Lấy chi tiết một booking theo ID
+ * Input: bookingId | Output: Booking details
+ */
 exports.getBookingById = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -221,15 +212,15 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-// --- CẬP NHẬT BOOKING ---
+/**
+ * Cập nhật booking
+ * Input: bookingId, updateData | Output: Updated booking
+ */
 exports.updateBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
     const updateData = req.body;
 
-    // findByIdAndUpdate: Tìm và update luôn.
-    // - new: true -> Trả về data MỚI SAU KHI UPDATE (chứ không phải data cũ)
-    // - runValidators: true -> Ép Mongoose phải check lại Enum của status (chống việc update bậy bạ status thành "abc")
     const updatedBooking = await Booking.findByIdAndUpdate(bookingId, updateData, { new: true, runValidators: true });
 
     if (!updatedBooking) {
@@ -247,7 +238,10 @@ exports.updateBooking = async (req, res) => {
   }
 };
 
-// --- XÓA BOOKING ---
+/**
+ * Xóa booking
+ * Input: bookingId | Output: Deleted booking
+ */
 exports.deleteBookingById = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -268,7 +262,10 @@ exports.deleteBookingById = async (req, res) => {
   }
 };
 
-// --- USER TỰ HỦY ĐƠN (Self-Service Cancel) ---
+/**
+ * Người dùng tự hủy booking của mình
+ * Input: bookingId | Output: Cancelled booking
+ */
 exports.cancelBooking = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -287,7 +284,6 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // 3. Kiểm tra điều kiện hủy (Ví dụ: Chỉ cho hủy nếu đơn đang 'pending' hoặc chưa đến giờ)
     if (booking.status === "active" || booking.status === "completed") {
       return res.status(400).json({
         success: false,
@@ -295,7 +291,6 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    // 4. Tiến hành cập nhật trạng thái thành 'cancelled'
     booking.status = "cancelled";
     await booking.save();
 
@@ -310,15 +305,18 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
-// --- LẤY TẤT CẢ BOOKING CỦA CHÍNH MÌNH (Lịch sử cá nhân) ---
+/**
+ * Lấy lịch sử đặt phòng của người dùng
+ * Input: userId (from token) | Output: User's bookings
+ */
 exports.getMyBookings = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const bookings = await Booking.find({ userId: userId })
-      .populate("packageId", "name hours price") // Lấy thông tin gói để show ra UI
-      .populate("roomId", "label floor") // Lấy tên phòng
-      .sort({ createdAt: -1 }); // Đơn mới nhất xếp lên đầu
+      .populate("packageId", "name hours price")
+      .populate("roomId", "label floor")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -331,36 +329,29 @@ exports.getMyBookings = async (req, res) => {
   }
 };
 
-// Lấy các đơn đặt phòng đang dang dở của mình (Dùng để check có đang vướng đơn nào chưa để chặn đặt mới)
+/**
+ * Lấy trạng thái booking hiện tại của user
+ * Input: userId (from token) | Output: canBookNew, activeBooking, pendingCount
+ */
 exports.getMyStatus = async (req, res) => {
   try {
-    const userId = req.user.id; // Lấy từ token đăng nhập
+    const userId = req.user.id;
 
-    // 1. Lấy TẤT CẢ các đơn đang dang dở (pending hoặc active)
     const ongoingBookings = await Booking.find({
       userId: userId,
-      status: { $in: ['pending', 'active'] }
+      status: { $in: ["pending", "active"] },
     });
 
-    // 2. Tìm xem có đơn nào đang active để làm chìa khóa không
-    const activeBooking = ongoingBookings.find(b => b.status === 'active');
+    const activeBooking = ongoingBookings.find((b) => b.status === "active");
 
-    // 3. Trả về Response "Đa năng"
     return res.status(200).json({
       success: true,
       data: {
-        // Biến này phục vụ cho chức năng tương lai (Chặn đặt phòng)
-        // Nếu mảng ongoingBookings có phần tử -> không cho đặt nữa (false)
-        canBookNew: ongoingBookings.length === 0, 
-        
-        // Biến này phục vụ cho nút Điều khiển phòng hiện tại
+        canBookNew: ongoingBookings.length === 0,
         activeBooking: activeBooking || null,
-
-        // Bonus: Báo cho App biết đang vướng bao nhiêu đơn
-        pendingCount: ongoingBookings.filter(b => b.status === 'pending').length 
-      }
+        pendingCount: ongoingBookings.filter((b) => b.status === "pending").length,
+      },
     });
-
   } catch (error) {
     return res.status(500).json({ success: false, message: "Lỗi Server" });
   }

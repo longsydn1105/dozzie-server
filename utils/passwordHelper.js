@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 
 /**
- * Mã hóa mật khẩu (Dùng khi Register)
+ * Hash password for secure storage - Input: password string - Output: hashed password
  */
 exports.hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(10);
@@ -9,7 +9,7 @@ exports.hashPassword = async (password) => {
 };
 
 /**
- * So sánh mật khẩu (Dùng khi Login)
+ * Compare plain password with hashed password - Input: plainPassword, hashedPassword - Output: boolean
  */
 exports.comparePassword = async (plainPassword, hashedPassword) => {
   return await bcrypt.compare(plainPassword, hashedPassword);

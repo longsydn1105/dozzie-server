@@ -1,16 +1,16 @@
 const cron = require("node-cron");
 const Booking = require("../models/Booking");
 const Invoice = require("../models/Invoice");
+const FCMService = require("../utils/fcmService");
 
 const startCronJobs = () => {
   console.log("⏳ [CronJob] Hệ thống chạy ngầm đã được kích hoạt!");
 
   // =========================================================
-  // JOB 1: HỦY ĐƠN CHƯA THANH TOÁN (Chạy ngầm MỖI PHÚT)
+  // JOB 1: HỦY ĐƠN CHƯA THANH TOÁN QUÁ 15 PHÚT (MỖI PHÚT)
   // =========================================================
   cron.schedule("* * * * *", async () => {
     try {
-      // Tính mốc thời gian cách đây 15 phút
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
 
       const expiredInvoices = await Invoice.find({
@@ -22,47 +22,75 @@ const startCronJobs = () => {
         const invoiceIds = expiredInvoices.map((inv) => inv._id);
         const bookingIds = expiredInvoices.map((inv) => inv.bookingId);
 
-        // Hủy hóa đơn
         await Invoice.updateMany({ _id: { $in: invoiceIds } }, { $set: { paymentStatus: "cancelled" } });
-        // Hủy booking
         await Booking.updateMany({ _id: { $in: bookingIds } }, { $set: { status: "cancelled" } });
 
-        console.log(`[CronJob - Timeout] ❌ Đã tự động hủy ${expiredInvoices.length} đơn quá 15p không thanh toán.`);
+        console.log(`[CronJob] ❌ Đã tự hủy ${expiredInvoices.length} đơn quá hạn thanh toán.`);
       }
     } catch (error) {
-      console.error("[CronJob - Timeout] Lỗi:", error);
+      console.error("[CronJob] Lỗi hủy đơn:", error);
     }
   });
 
   // =========================================================
-  // JOB 2: TỰ ĐỘNG CHECK-OUT PHÒNG HẾT GIỜ (Chạy MỖI 10 PHÚT)
+  // JOB 2: TỰ ĐỘNG CHECK-OUT PHÒNG HẾT GIỜ (MỖI 10 PHÚT)
   // =========================================================
   cron.schedule("*/10 * * * *", async () => {
     try {
       const now = new Date();
-      // Quét lùi lại 2 ngày trước để tối ưu DB
       const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
 
       const result = await Booking.updateMany(
         {
-          status: "active", // Đang dùng phòng
+          status: "active",
           endTime: {
-            $gte: twoDaysAgo, // Nằm trong phạm vi 2 ngày đổ lại
-            $lte: now, // VÀ thời gian kết thúc đã trôi qua (<= hiện tại)
+            $gte: twoDaysAgo,
+            $lte: now,
           },
         },
         {
-          $set: { status: "completed" }, // Đổi thành hoàn thành
+          $set: { status: "completed" },
         },
       );
 
       if (result.modifiedCount > 0) {
-        console.log(
-          `[CronJob - AutoCheckout] ✅ Đã dọn dẹp và hoàn thành ${result.modifiedCount} phòng lúc ${now.toLocaleTimeString("vi-VN")}`,
-        );
+        console.log(`[CronJob] ✅ Đã check-out thành công ${result.modifiedCount} phòng.`);
       }
     } catch (error) {
-      console.error("[CronJob - AutoCheckout] Lỗi:", error);
+      console.error("[CronJob] Lỗi check-out:", error);
+    }
+  });
+
+  // =========================================================
+  // JOB 3: BÁO THỨC TRƯỚC 10 PHÚT HẾT GIỜ QUA FCM (MỖI PHÚT)
+  // =========================================================
+  cron.schedule("* * * * *", async () => {
+    try {
+      const tenMinsFromNow = new Date(Date.now() + 10 * 60 * 1000);
+
+      const bookingsToRemind = await Booking.find({
+        status: "active",
+        isReminded10Min: false,
+        endTime: { $lte: tenMinsFromNow },
+      }).populate("userId"); 
+
+      if (bookingsToRemind.length > 0) {
+        for (let booking of bookingsToRemind) {
+          if (booking.userId && booking.userId.fcmToken) {
+            await FCMService.sendDataMessage(booking.userId.fcmToken, {
+              action: "ALARM_TIMEOUT",
+              roomId: booking.roomId.toString(),
+            });
+          }
+
+          booking.isReminded10Min = true;
+          await booking.save();
+        }
+
+        console.log(`[CronJob] ⏰ Đã kích hoạt báo thức cho ${bookingsToRemind.length} phòng sắp hết hạn.`);
+      }
+    } catch (error) {
+      console.error("[CronJob] Lỗi gửi báo thức hết giờ:", error);
     }
   });
 };

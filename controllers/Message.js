@@ -1,10 +1,12 @@
 const Message = require("../models/Message");
 
+/**
+ * Lấy lịch sử chat/tin nhắn
+ * Input: bookingId | Output: Messages sorted by creation time\n */
 exports.getChatHistory = async (req, res) => {
   try {
     const { bookingId } = req.params;
 
-    // Lấy tin nhắn cũ, sắp xếp từ cũ tới mới (tăng dần theo thời gian)
     const messages = await Message.find({ bookingId: bookingId }).sort({ createdAt: 1 }).lean();
 
     return res.status(200).json({

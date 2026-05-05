@@ -1,6 +1,8 @@
-// models/ServicePackage.js
 const mongoose = require("mongoose");
 
+/**
+ * ServicePackage schema - gói dịch vụ phòng
+ */
 const servicePackageSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },

@@ -1,6 +1,9 @@
 const ServicePackages = require("../models/ServicePackages");
 
-// Tạo gói mới (Admin dùng)
+/**
+ * Tạo gói dịch vụ mới
+ * Input: name, hours, price | Output: New service package
+ */
 exports.createPackage = async (req, res) => {
   try {
     const { name, hours, price } = req.body;
@@ -12,6 +15,10 @@ exports.createPackage = async (req, res) => {
   }
 };
 
+/**
+ * Lấy tất cả gói dịch vụ
+ * Input: N/A | Output: All packages sorted by hours
+ */
 exports.getAllPackages = async (req, res) => {
   try {
     const packages = await ServicePackages.find({}).sort({ hours: 1 });
@@ -21,6 +28,10 @@ exports.getAllPackages = async (req, res) => {
   }
 };
 
+/**
+ * Lấy tất cả gói dịch vụ đang kích hoạt
+ * Input: N/A | Output: Active packages
+ */
 exports.getAllActivePackages = async (req, res) => {
   try {
     const packages = await ServicePackages.find({ isActive: true }).sort({ hours: 1 });
@@ -30,13 +41,15 @@ exports.getAllActivePackages = async (req, res) => {
   }
 };
 
-// --- SỬA GÓI DỊCH VỤ (Chỉ Admin) ---
+/**
+ * Cập nhật gói dịch vụ
+ * Input: packageId, name, hours, price, isActive | Output: Updated package
+ */
 exports.updatePackage = async (req, res) => {
   try {
     const { name, hours, price, isActive } = req.body;
     const packageId = req.params.id;
 
-    // Dùng { new: true } để Mongoose trả về object MỚI SAU KHI sửa
     const updatedPackage = await ServicePackages.findByIdAndUpdate(
       packageId,
       { name, hours, price, isActive },
@@ -53,12 +66,14 @@ exports.updatePackage = async (req, res) => {
   }
 };
 
-// --- XÓA GÓI DỊCH VỤ (Chỉ Admin) ---
+/**
+ * Xóa gói dịch vụ
+ * Input: packageId | Output: Deleted package
+ */
 exports.deletePackage = async (req, res) => {
   try {
     const packageId = req.params.id;
 
-    // Xóa cứng (Hard Delete) khỏi database
     const deletedPackage = await ServicePackages.findByIdAndDelete(packageId);
 
     if (!deletedPackage) {

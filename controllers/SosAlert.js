@@ -1,11 +1,15 @@
 const SosAlert = require("../models/SosAlert");
 const { getIO } = require("../utils/socket");
-// Khách tạo yêu cầu SOS
+
+/**
+ * Tạo yêu cầu SOS
+ * Input: roomId, message | Output: SOS alert created
+ */
 exports.createAlert = async (req, res) => {
   try {
     const { roomId, message } = req.body;
 
-    const userId = req.user.id; // Lấy từ Token
+    const userId = req.user.id;
 
     const newAlert = new SosAlert({
       userId,
@@ -32,7 +36,10 @@ exports.createAlert = async (req, res) => {
   }
 };
 
-// Admin lấy danh sách các ca SOS chưa xử lý
+/**
+ * Lấy danh sách SOS chưa xử lý
+ * Input: N/A | Output: All SOS alerts with user info
+ */
 exports.getAlerts = async (req, res) => {
   try {
     const alerts = await SosAlert.find().populate("userId", "fullName phone").sort({ createdAt: -1 });
@@ -42,16 +49,15 @@ exports.getAlerts = async (req, res) => {
   }
 };
 
-// --- DÀNH CHO ADMIN: ĐÁNH DẤU ĐÃ XỬ LÝ SOS ---
+/**
+ * Admin đánh dấu SOS đã xử lý
+ * Input: sosId | Output: Updated SOS alert
+ */
 exports.resolveAlert = async (req, res) => {
   try {
-    const { id } = req.params; // ID của bản ghi SOS
+    const { id } = req.params;
 
-    const updatedAlert = await SosAlert.findByIdAndUpdate(
-      id,
-      { status: "resolved" },
-      { new: true }, // Trả về bản ghi sau khi đã update
-    );
+    const updatedAlert = await SosAlert.findByIdAndUpdate(id, { status: "resolved" }, { new: true });
 
     if (!updatedAlert) {
       return res.status(404).json({ success: false, message: "Không tìm thấy yêu cầu SOS này." });

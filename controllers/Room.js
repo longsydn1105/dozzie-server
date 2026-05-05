@@ -1,17 +1,17 @@
-// server/controllers/Room.js
 const Booking = require("../models/Booking");
-const Room = require("../models/Room"); // "Lôi" model Room vào
-const {sendCommandToRoom} = require("../utils/mqttService")
-// Hàm "lấy" "tất cả" "phòng"
+const Room = require("../models/Room");
+const { sendCommandToRoom } = require("../utils/mqttService");
+/**
+ * Lấy tất cả phòng
+ * Input: N/A | Output: All rooms sorted by ID
+ */
 exports.getRooms = async (req, res) => {
   try {
-    // 1. "Tìm" "tất cả" (find "rỗng" {}) "và" "sắp xếp" "theo" "_id" "cho" "đẹp"
-    const rooms = await Room.find({}).sort({ _id: 1 }); // "sort 1" = A-Z
+    const rooms = await Room.find({}).sort({ _id: 1 });
 
-    // 2. "Trả" "về"
     res.status(200).json({
       message: "Lấy list phòng thành công",
-      count: rooms.length, // "Tút" "thêm" "cái" "số lượng" "cho" "pro"
+      count: rooms.length,
       data: rooms,
     });
   } catch (error) {
@@ -20,10 +20,13 @@ exports.getRooms = async (req, res) => {
   }
 };
 
+/**
+ * Tạo phòng mới
+ * Input: _id, label, gender, floor, status, iotConfig | Output: New room
+ */
 exports.createRoom = async (req, res) => {
   try {
     const { _id, label, gender, floor, status, iotConfig } = req.body;
-    // Đếm số phòng hiện có ở tầng đó
     const count = await Room.countDocuments({ floor });
 
     if (count >= 20) {
@@ -33,13 +36,11 @@ exports.createRoom = async (req, res) => {
       });
     }
 
-    // Kiểm tra xem ID (M-01, F-01) đã tồn tại chưa
     const existingRoom = await Room.findById(_id);
     if (existingRoom) {
       return res.status(400).json({ success: false, message: "Mã phòng này đã tồn tại!" });
     }
 
-    // Tạo phòng mới
     const newRoom = new Room({
       _id,
       label,
@@ -59,7 +60,10 @@ exports.createRoom = async (req, res) => {
     res.status(500).json({ success: false, message: "Lỗi tạo phòng: " + error.message });
   }
 };
-// --- 2. CẬP NHẬT THÔNG TIN PHÒNG ---
+/**
+ * Cập nhật thông tin phòng
+ * Input: roomId, updateData | Output: Updated room
+ */
 exports.updateRoom = async (req, res) => {
   try {
     const { id } = req.params;
@@ -77,12 +81,14 @@ exports.updateRoom = async (req, res) => {
   }
 };
 
-// --- 3. XÓA (ẨN) PHÒNG ---
+/**
+ * Xóa phòng
+ * Input: roomId | Output: Deleted room
+ */
 exports.deleteRoom = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Cách 1: Xóa thật khỏi DB
     const deletedRoom = await Room.findByIdAndDelete(id);
 
     if (!deletedRoom) {
@@ -96,7 +102,8 @@ exports.deleteRoom = async (req, res) => {
 };
 
 /**
- * Truy vấn thông tin chi tiết của một phòng dựa trên ID
+ * Lấy chi tiết một phòng theo ID
+ * Input: roomId | Output: Room details
  */
 exports.getRoomById = async (req, res) => {
   try {
@@ -125,46 +132,40 @@ exports.getRoomById = async (req, res) => {
   }
 };
 
-// --- 4. GỬI LỆNH ĐIỀU KHIỂN PHÒNG QUA MQTT (IoT) ---
+/**
+ * Gửi lệnh điều khiển phòng - mở khóa số, bật/tắt đèn, v.v
+ * Input: topic, payload, roomId, digitalKey | Output: Command execution status
+ */
 exports.sendIoTCommand = async (req, res) => {
   try {
     const { topic, payload, roomId, digitalKey } = req.body;
 
-    // 1. Kiểm tra đầu vào cơ bản
     if (!roomId || !digitalKey || !payload) {
-      return res.status(400).json({ success: false, message: "Thiếu thông tin điều khiển!" });
+      return res.status(400).json({ success: false, message: "Thiếu thông tin điều khỂn!" });
     }
 
-    // 2. Tìm kiếm Booking hợp lệ
-    // Chỉ cho phép trạng thái 'active' (đã thanh toán/đã check-in)
     const booking = await Booking.findOne({
       roomId: roomId,
       digitalKey: digitalKey,
-      status: 'active' 
+      status: "active",
     });
 
     if (!booking) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Chìa khóa không hợp lệ hoặc Booking chưa được kích hoạt (Pending)!" 
+      return res.status(403).json({
+        success: false,
+        message: "Chìa khóa không hợp lệ hoặc Booking chưa được kích hoạt (Pending)!",
       });
     }
 
-    // 3. Kiểm tra thời gian (Time Window Validation)
     const now = new Date();
     if (now < booking.startTime || now > booking.endTime) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Chìa khóa đã hết hạn hoặc chưa đến giờ sử dụng!" 
+      return res.status(403).json({
+        success: false,
+        message: "Chìa khóa đã hết hạn hoặc chưa đến giờ sử dụng!",
       });
     }
 
-    // 4. Mọi thứ OK -> Bắn lệnh MQTT
-    // Topic ông có thể tự build ở đây để bảo mật: `dozzie/capsule/${roomId}`
     sendCommandToRoom(topic, payload);
-
-    return res.status(200).json({ success: true, message: "Lệnh đã được thực thi!" });
-
   } catch (error) {
     console.error("Lỗi xác thực IoT:", error);
     return res.status(500).json({ success: false, message: "Lỗi hệ thống!" });

@@ -1,10 +1,11 @@
-// server/utils/sendMail.js
 const { Resend } = require("resend");
 require("dotenv").config();
 
-// Khởi tạo Resend với API Key
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+/**
+ * Send booking confirmation email - Input: toEmail, bookingData - Output: success boolean
+ */
 const sendBookingEmail = async (toEmail, bookingData) => {
   if (!process.env.RESEND_API_KEY) {
     console.error("❌ LỖI: Thiếu RESEND_API_KEY");
@@ -12,7 +13,6 @@ const sendBookingEmail = async (toEmail, bookingData) => {
   }
 
   try {
-    // 1. Format dữ liệu (Giữ nguyên logic cũ)
     const startTime = new Date(bookingData.startTime).toLocaleString("vi-VN", {
       timeZone: "Asia/Ho_Chi_Minh",
     });
@@ -24,7 +24,6 @@ const sendBookingEmail = async (toEmail, bookingData) => {
       : bookingData.roomId || "Phòng M-01";
     const HOME_URL = "https://dozzie-client.vercel.app";
 
-    // 2. Nội dung HTML (Giữ nguyên form đẹp của ông)
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden;">
           <div style="background-color: #229ebd; padding: 30px; text-align: center; color: white;">
@@ -47,12 +46,8 @@ const sendBookingEmail = async (toEmail, bookingData) => {
       </div>
     `;
 
-    // 3. Gửi Mail bằng Resend API
     const data = await resend.emails.send({
-      // ⚠️ QUAN TRỌNG: Không có domain riêng thì BẮT BUỘC phải dùng mail này
       from: "Dozzie Hotel <onboarding@resend.dev>",
-
-      // ⚠️ QUAN TRỌNG: Chỉ gửi được cho chính ông (mail chủ tài khoản Resend)
       to: toEmail,
 
       subject: "[Dozzie] Xác nhận đặt phòng thành công 🏨",

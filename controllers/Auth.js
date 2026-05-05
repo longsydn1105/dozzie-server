@@ -1,15 +1,16 @@
-// server/controllers/Auth.js
-const User = require("../models/User"); // "Lôi" model User vào
-const jwt = require("jsonwebtoken"); // "Lôi" "máy" "in" "vé" "vào"
+const User = require("../models/User");
+const jwt = require("jsonwebtoken");
 const { hashPassword, comparePassword } = require("../utils/passwordHelper");
-require("dotenv").config(); // "Lôi" "dotenv" "vào" "để" "lấy" "JWT_SECRET"
+require("dotenv").config();
 
+/**
+ * Đăng ký tài khoản mới
+ * Input: fullName, email, password | Output: User data & role
+ */
 exports.register = async (req, res) => {
   try {
-    // 1. Tiếp nhận dữ liệu từ request body
     const { fullName, email, password } = req.body;
 
-    // 2. Kiểm tra các trường bắt buộc (Validation cơ bản)
     if (!fullName || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -17,7 +18,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // 3. Chuẩn hóa email và kiểm tra trùng lặp
     const normalizedEmail = email.toLowerCase().trim();
     const existingUser = await User.findOne({ email: normalizedEmail });
 
@@ -28,10 +28,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    // 4. Mã hóa mật khẩu trước khi lưu (Bảo mật tối thượng)
     const encryptedPassword = await hashPassword(password);
-
-    // 5. Khởi tạo và lưu User mới
     const newUser = new User({
       fullName: fullName.trim(),
       email: normalizedEmail,
@@ -40,7 +37,6 @@ exports.register = async (req, res) => {
 
     await newUser.save();
 
-    // 6. Phản hồi thành công (Không gửi lại password cho client)
     return res.status(201).json({
       success: true,
       message: "Đăng ký tài khoản thành công.",
@@ -52,7 +48,6 @@ exports.register = async (req, res) => {
       },
     });
   } catch (error) {
-    // Log lỗi chi tiết ở server để dev check, nhưng gửi thông báo chung cho user
     console.error("Critical Register Error:", error);
     return res.status(500).json({
       success: false,
@@ -62,20 +57,21 @@ exports.register = async (req, res) => {
   }
 };
 
+/**
+ * Đăng nhập - xác thực email & password, phát token
+ * Input: email, password | Output: JWT token & user info
+ */
 exports.login = async (req, res) => {
   try {
-    // 1. "Lấy" data
     const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: "email hoặc password không được trống" });
     }
 
-    // 2. "Tìm" user
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      // 404 Not Found
       return res.status(404).json({ message: "Email không tồn tại" });
     }
 
@@ -93,7 +89,6 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    // 5. "Trả" "vé" (token) "và" "info" "user" "về" "cho" "client"
     res.status(200).json({
       success: true,
       token,
