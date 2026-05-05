@@ -1,7 +1,6 @@
 const admin = require("firebase-admin");
 const path = require("path");
 const fs = require("fs");
-const serviceAccount = require("../config/firebase-service-account.json");
 
 let serviceAccount;
 
