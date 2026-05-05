@@ -63,7 +63,7 @@ exports.register = async (req, res) => {
  */
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, fcmToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: "email hoặc password không được trống" });
@@ -87,6 +87,12 @@ exports.login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Mật khẩu sai rồi hoặc tài khoản rồi!" });
     }
 
+    if (fcmToken) {
+      user.fcmToken = fcmToken;
+      await user.save();
+      console.log(`📱 Đã cập nhật FCM Token mới cho user: ${user.email}`);
+    }
+
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.status(200).json({
@@ -101,5 +107,42 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateFcmToken = async (req, res) => {
+  try {
+    const userId = req.user.id; // Lấy từ auth token
+    const { fcmToken } = req.body;
+
+    await User.findByIdAndUpdate(userId, { fcmToken: fcmToken });
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+
+    if (user && user.fcmToken === fcmToken) {
+      user.fcmToken = null;
+      await user.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Đăng xuất và xoá FCM Token thành công",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Hệ thống đang gặp sự cố. Vui lòng thử lại sau.",
+      error: error.message,
+    });
   }
 };
