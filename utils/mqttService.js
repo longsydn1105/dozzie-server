@@ -21,16 +21,20 @@ client.on("reconnect", () => {
  * Publish MQTT command to IoT device - Input: topic, payload - Output: success/error
  */
 const sendCommandToRoom = (topic, payload) => {
-  if (client.connected) {
+  return new Promise((resolve, reject) => {
+    if (!client.connected) {
+      const err = new Error("MQTT client not connected");
+      console.error("⚠️ Không thể gửi lệnh: Hệ thống đang rớt kết nối với HiveMQ!");
+      return reject(err);
+    }
+
     const command = (() => {
       if (payload && typeof payload === "object") {
         if (payload.command !== undefined && payload.command !== null) {
           return payload.command;
         }
-
         return payload;
       }
-
       return payload;
     })();
 
@@ -39,13 +43,13 @@ const sendCommandToRoom = (topic, payload) => {
     client.publish(topic, message, { qos: 1 }, (err) => {
       if (err) {
         console.error(`❌ Lỗi khi gửi lệnh tới [${topic}]:`, err);
+        return reject(err);
       } else {
         console.log(`🚀 Đã bắn lệnh thành công tới topic [${topic}]`);
+        return resolve();
       }
     });
-  } else {
-    console.error("⚠️ Không thể gửi lệnh: Hệ thống đang rớt kết nối với HiveMQ!");
-  }
+  });
 };
 
 module.exports = {

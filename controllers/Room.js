@@ -165,7 +165,8 @@ exports.sendIoTCommand = async (req, res) => {
       });
     }
 
-    sendCommandToRoom(topic, payload);
+    await sendCommandToRoom(topic, payload);
+    return res.status(200).json({ success: true, message: "Đã gửi lệnh thành công." });
   } catch (error) {
     console.error("Lỗi xác thực IoT:", error);
     return res.status(500).json({ success: false, message: "Lỗi hệ thống!" });
