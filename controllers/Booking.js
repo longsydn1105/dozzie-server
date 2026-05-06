@@ -23,9 +23,10 @@ exports.createBooking = async (req, res) => {
     const end = new Date(start.getTime() + packageInfo.hours * 60 * 60 * 1000);
 
     const isRoomBusy = await Booking.findOne({
-      roomId: roomId,
-      status: { $ne: "cancelled" },
-      $or: [{ startTime: { $lt: end }, endTime: { $gt: start } }],
+      roomId,
+      status: { $in: ["pending", "active"] },
+      startTime: { $lt: end },
+      endTime: { $gt: start },
     });
 
     if (isRoomBusy) {

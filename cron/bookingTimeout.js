@@ -35,7 +35,7 @@ const startCronJobs = () => {
   // =========================================================
   // JOB 2: TỰ ĐỘNG CHECK-OUT PHÒNG HẾT GIỜ (MỖI 10 PHÚT)
   // =========================================================
-  cron.schedule("*/10 * * * *", async () => {
+  cron.schedule("*/5 * * * *", async () => {
     try {
       const now = new Date();
       const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
@@ -72,7 +72,7 @@ const startCronJobs = () => {
         status: "active",
         isReminded10Min: false,
         endTime: { $lte: tenMinsFromNow },
-      }).populate("userId"); 
+      }).populate("userId");
 
       if (bookingsToRemind.length > 0) {
         for (let booking of bookingsToRemind) {

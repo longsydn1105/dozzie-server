@@ -26,8 +26,8 @@ admin.initializeApp({
 const sendDataMessage = async (token, dataPayload) => {
   try {
     const message = {
-      data: dataPayload,
       token: token,
+      data: dataPayload,
     };
     const response = await admin.messaging().send(message);
     console.log("✅ [FCM] Đã gửi lệnh báo thức thành công:", response);
