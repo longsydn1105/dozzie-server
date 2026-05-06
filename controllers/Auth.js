@@ -88,7 +88,7 @@ exports.login = async (req, res) => {
     }
 
     if (fcmToken) {
-      user.fcmToken = fcmToken;
+      user.fcmToken = fcmToken || null;
       await user.save();
       console.log(`📱 Đã cập nhật FCM Token mới cho user: ${user.email}`);
     }

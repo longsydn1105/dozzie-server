@@ -285,6 +285,51 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
+    /**
+     * Khách hàng checkout sớm khỏi phòng
+     * Input: bookingId | Output: Updated booking with status completed
+     */
+    exports.checkoutBooking = async (req, res) => {
+      try {
+        const bookingId = req.params.id;
+        const userId = req.user.id;
+
+        const booking = await Booking.findById(bookingId);
+
+        if (!booking) {
+          return res.status(404).json({ success: false, message: "Không tìm thấy đơn này." });
+        }
+
+        if (booking.userId.toString() !== userId) {
+          return res.status(403).json({
+            success: false,
+            message: "Không thể checkout đơn của người khác.",
+          });
+        }
+
+        if (booking.status !== "active") {
+          return res.status(400).json({
+            success: false,
+            message: "Chỉ có thể checkout khi booking đang ở trạng thái active.",
+          });
+        }
+
+        booking.status = "completed";
+        await booking.save();
+
+        return res.status(200).json({
+          success: true,
+          message: "Checkout sớm thành công.",
+          data: booking,
+        });
+      } catch (error) {
+        console.error("Lỗi checkoutBooking:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Lỗi hệ thống khi checkout booking.",
+        });
+      }
+    };
     if (booking.status === "active" || booking.status === "completed") {
       return res.status(400).json({
         success: false,

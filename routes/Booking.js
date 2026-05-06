@@ -12,5 +12,6 @@ router.get("/:id", bookingController.getBookingById);
 router.put("/:id", isAuth, isAdmin, bookingController.updateBooking);
 router.delete("/:id", isAuth, isAdmin, bookingController.deleteBookingById);
 router.patch("/:id/cancel", isAuth, bookingController.cancelBooking);
+router.patch("/:id/checkout", isAuth, bookingController.checkoutBooking);
 
 module.exports = router;
