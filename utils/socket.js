@@ -24,11 +24,13 @@ module.exports = {
         try {
           const { bookingId, roomId, senderRole, text } = data;
 
+          const encryptedText = encryptMessage(text);
+
           const savedMessage = await Message.create({
             bookingId,
             roomId,
             senderRole,
-            text,
+            text: encryptedText,
           });
 
           io.to(bookingId).emit("receive_message", savedMessage);

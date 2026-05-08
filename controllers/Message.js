@@ -9,9 +9,14 @@ exports.getChatHistory = async (req, res) => {
 
     const messages = await Message.find({ bookingId: bookingId }).sort({ createdAt: 1 }).lean();
 
+    const decryptedMessages = messages.map((msg) => ({
+      ...msg,
+      text: decryptMessage(msg.text), // Giải mã text
+    }));
+
     return res.status(200).json({
       success: true,
-      data: messages,
+      data: decryptedMessages,
     });
   } catch (error) {
     console.error("Lỗi lấy lịch sử chat:", error);
