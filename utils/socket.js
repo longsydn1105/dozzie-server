@@ -1,6 +1,6 @@
 const { Server } = require("socket.io");
 const Message = require("../models/Message");
-const { encryptMessage } = require("./encryptionService"); 
+const { encryptMessage, decryptMessage } = require("./encryptionService"); 
 
 let io;
 
@@ -34,7 +34,10 @@ module.exports = {
             text: encryptedText,
           });
 
-          io.to(bookingId).emit("receive_message", savedMessage);
+          const messageToEmit = savedMessage.toObject();
+          messageToEmit.text = decryptMessage(messageToEmit.text);
+
+          io.to(bookingId).emit("receive_message", messageToEmit);
 
           if (senderRole !== "admin") {
             io.emit("admin_global_notification", savedMessage);
