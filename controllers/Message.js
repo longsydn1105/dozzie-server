@@ -1,4 +1,6 @@
 const Message = require("../models/Message");
+const { decryptMessage } = require("../utils/encryptionService"); // Thêm import
+
 
 /**
  * Lấy lịch sử chat/tin nhắn
